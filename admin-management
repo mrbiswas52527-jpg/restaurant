@@ -1,0 +1,212 @@
+import { db, appId } from './firebase-setup.js';
+import { collection, addDoc, doc, setDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { menuItems } from './state-management.js';
+import { renderAdminView } from './ui-updates.js';
+
+// Define the name of the public collection for menu items
+const MENU_COLLECTION_NAME = 'menuItems'; // Updated to match path in state-management.js
+
+/**
+ * Gets the Firestore collection reference for menu items.
+ * @returns {object} The Firestore Collection Reference.
+ */
+const getMenuCollection = () => {
+    // Path: /artifacts/{appId}/public/data/menuItems
+    return collection(db, `artifacts/${appId}/public/data/${MENU_COLLECTION_NAME}`);
+}
+
+// --- Form Element References (Matching IDs from restaurant_app.html) ---
+const adminForm = document.getElementById('admin-form');
+const itemIdInput = document.getElementById('admin-item-id'); // Hidden input for item ID
+const itemNameInput = document.getElementById('admin-item-name');
+const itemDescInput = document.getElementById('admin-item-description');
+const itemPriceInput = document.getElementById('admin-item-price');
+const itemCategoryInput = document.getElementById('admin-item-category');
+const itemImageUrlInput = document.getElementById('admin-item-image-url'); // NEW FIELD
+const itemDietaryInput = document.getElementById('admin-item-dietary'); // NEW FIELD
+const saveButton = document.getElementById('admin-save-btn');
+
+
+// --- EVENT LISTENERS ---
+
+/**
+ * Handles the submit event for both saving a new item and updating an existing one.
+ * Attached directly via 'onsubmit' in HTML, but defined here for structure.
+ * Note: The actual listener is on the window object in the HTML for simplicity, 
+ * but this logic should be the target.
+ * We are defining window.saveMenuItem in the global scope below.
+ */
+
+// --- PUBLIC FUNCTIONS ---
+
+/**
+ * Saves a brand new menu item to Firestore.
+ * @param {object} itemData The data object for the new item.
+ */
+export async function saveNewItem(itemData) {
+    try {
+        const finalItemData = { ...itemData, createdAt: serverTimestamp() }; // Use serverTimestamp for creation
+        await addDoc(getMenuCollection(), finalItemData);
+        console.log("New item saved successfully.");
+        window.showModal('Success', `${itemData.name} was successfully added to the menu.`);
+        window.resetAdminForm();
+    } catch (e) {
+        console.error("Error adding document: ", e);
+        window.showModal('Error', 'Failed to add item. Please try again.');
+    }
+}
+
+/**
+ * Loads an existing item's data into the form for editing.
+ * @param {string} itemId The ID of the document to edit.
+ */
+export function editItem(itemId) {
+    // Find the item in the current local state
+    const itemToEdit = menuItems.find(item => item.id === itemId);
+    if (itemToEdit) {
+        // 1. Load data into the form fields
+        itemIdInput.value = itemToEdit.id; // Set the ID for tracking
+        itemNameInput.value = itemToEdit.name;
+        itemDescInput.value = itemToEdit.description;
+        itemPriceInput.value = itemToEdit.price;
+        itemCategoryInput.value = itemToEdit.category;
+        
+        // Load NEW fields
+        itemImageUrlInput.value = itemToEdit.imageUrl || '';
+        itemDietaryInput.value = itemToEdit.dietaryStatus || 'veg';
+
+
+        // 2. Update the button text and style
+        saveButton.textContent = 'Update Item';
+        saveButton.classList.remove('bg-primary-dark');
+        saveButton.classList.add('bg-blue-600', 'hover:bg-blue-700');
+        
+        // Update form title
+        document.getElementById('admin-form-title').textContent = `Edit Item: ${itemToEdit.name}`;
+    }
+}
+
+/**
+ * Updates an existing menu item in Firestore.
+ * @param {string} itemId The ID of the document to update.
+ * @param {object} itemData The new data object.
+ */
+export async function updateItem(itemId, itemData) {
+    try {
+        const itemRef = doc(db, getMenuCollection().path, itemId);
+        // Add updatedAt timestamp to the update payload for tracking
+        const updatePayload = { ...itemData, updatedAt: serverTimestamp() };
+        
+        await setDoc(itemRef, updatePayload, { merge: true }); 
+        console.log(`Item ${itemId} updated successfully.`);
+        window.showModal('Success', `${itemData.name} was updated successfully.`);
+        window.resetAdminForm();
+    } catch (e) {
+        console.error("Error updating document: ", e);
+        window.showModal('Error', 'Failed to update item. Please try again.');
+    }
+}
+
+/**
+ * Deletes a menu item from Firestore.
+ * @param {string} itemId The ID of the document to delete.
+ */
+export async function deleteMenuItem(itemId) {
+    if (!db) return window.showModal("Database Error", "Cannot connect to database. Firebase not initialized.");
+    
+    const item = menuItems.find(i => i.id === itemId);
+    const isConfirmed = await window.showModal(
+        "Confirm Deletion", 
+        `Are you sure you want to permanently delete '${item ? item.name : 'this item'}'? This action is permanent.`, 
+        true
+    );
+    
+    if (isConfirmed) {
+        try {
+            const itemRef = doc(db, getMenuCollection().path, itemId);
+            await deleteDoc(itemRef);
+            console.log(`Item ${itemId} deleted successfully.`);
+            window.showModal('Success', `${item ? item.name : 'Item'} deleted successfully.`);
+        } catch (e) {
+            console.error("Error deleting document: ", e);
+            window.showModal('Error', 'Failed to delete item. Please try again.');
+        }
+    }
+}
+
+/**
+ * Resets the form and returns it to 'save new item' mode.
+ */
+export function resetAdminForm() {
+    document.getElementById('admin-form').reset();
+    itemIdInput.value = ''; // Clear hidden ID input
+    
+    // Restore the button text and style
+    saveButton.textContent = 'Save Item';
+    saveButton.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+    saveButton.classList.add('bg-primary-dark', 'hover:bg-gray-800');
+    
+    // Restore form title
+    document.getElementById('admin-form-title').textContent = 'Add New Item';
+}
+
+/**
+ * Handles the form submission event by validating and routing to save/update functions.
+ * Exposed to window via event handler in HTML.
+ */
+export async function handleAdminSubmit(e) {
+    e.preventDefault();
+
+    // CRITICAL: Check for database initialization before proceeding
+    if (!db) {
+        window.showModal("Error", "Authentication service not initialized. Please wait for the application to finish loading.");
+        return;
+    }
+    
+    const name = itemNameInput.value.trim();
+    const price = parseFloat(itemPriceInput.value);
+    const category = itemCategoryInput.value;
+
+    if (!name || isNaN(price) || price <= 0 || !category) {
+        window.showModal('Input Error', 'Please enter a valid name, price greater than zero, and select a category.');
+        return;
+    }
+    
+    // Temporarily disable the button to prevent double-submit
+    const originalText = saveButton.textContent;
+    saveButton.textContent = 'Processing...';
+    saveButton.disabled = true;
+
+    // Prepare base item data including new fields
+    const itemData = {
+        name: name,
+        description: itemDescInput.value.trim(),
+        price: price,
+        category: category,
+        imageUrl: itemImageUrlInput.value.trim(),
+        dietaryStatus: itemDietaryInput.value,
+    };
+
+    const currentItemId = itemIdInput.value;
+
+    try {
+        if (currentItemId) {
+            await updateItem(currentItemId, itemData);
+        } else {
+            await saveNewItem(itemData);
+        }
+    } finally {
+        // Re-enable the button regardless of success/failure
+        saveButton.textContent = originalText;
+        saveButton.disabled = false;
+    }
+}
+
+
+// Attach public functions to the window object so they can be called from dynamically
+// created HTML elements and from the form's onSubmit event
+window.saveMenuItem = handleAdminSubmit; // Use the combined handler for the form submit
+window.deleteMenuItem = deleteMenuItem;
+window.editMenuItem = editItem; // Renamed to match HTML call
+window.resetAdminForm = resetAdminForm;
+
