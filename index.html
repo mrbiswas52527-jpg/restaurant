@@ -1,0 +1,1437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Restaurant Control Panel</title>
+    <!-- Load Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load qrcode.js library for QR code generation -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <style>
+        /* Custom Tailwind Configuration and Styles */
+        :root {
+            --primary-dark: #1f2937; /* Gray-800 */
+            --accent-gold: #f59e0b; /* Amber-500 */
+            --status-new: #10b981; /* Emerald-500 (New) */
+            --status-progress: #3b82f6; /* Blue-500 (Preparing) */
+            --status-ready: #f97316; /* Orange-500 (Ready) */
+        }
+        .text-primary-dark { color: var(--primary-dark); }
+        .bg-primary-dark { background-color: var(--primary-dark); }
+        .border-primary-dark { border-color: var(--primary-dark); }
+        .text-accent-gold { color: var(--accent-gold); }
+        .border-accent-gold { border-color: var(--accent-gold); }
+        
+        /* Status Colors */
+        .status-new { background-color: var(--status-new); border-color: var(--status-new); }
+        .status-progress { background-color: var(--status-progress); border-color: var(--status-progress); }
+        .status-ready { background-color: var(--status-ready); border-color: var(--status-ready); }
+        
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; } /* Adjusted bg color for softer look */
+        .scroll-hidden::-webkit-scrollbar { display: none; }
+        .scroll-hidden { -ms-overflow-style: none; scrollbar-width: none; }
+        /* Style for the QR code container */
+        #qrcode-container img { display: block; }
+
+        /* Custom Styles for Input Focus */
+        input:focus, textarea:focus, select:focus {
+            border-color: var(--accent-gold) !important;
+            box-shadow: 0 0 0 1px var(--accent-gold);
+        }
+        /* Custom decoration for Menu Cards in Customer View */
+        .menu-card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .menu-card:hover {
+            transform: scale(1.01);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        /* Dietary Indicator Colors for Filter Buttons */
+        .filter-veg { background-color: #d1fae5; color: #059669; } /* Green-100, Green-600 */
+        .filter-non-veg { background-color: #fee2e2; color: #ef4444; } /* Red-100, Red-500 */
+        .filter-all { background-color: #f3f4f6; color: #4b5563; } /* Gray-100, Gray-600 */
+        
+        /* Mobile Cart Overlay Styling */
+        #cart-summary {
+            transition: transform 0.3s ease;
+        }
+        /* Style to make mobile cart cover entire viewport when active */
+        @media (max-width: 1023px) {
+            #cart-summary:not(.hidden) {
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                border-radius: 0;
+                max-height: 100vh;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+
+    <!-- Global Message Modal (replaces alert/confirm) -->
+    <div id="modal-backdrop" class="fixed inset-0 bg-black bg-opacity-70 z-50 hidden items-center justify-center">
+        <div class="bg-white p-6 rounded-xl shadow-2xl max-w-sm w-full animate-in zoom-in duration-300">
+            <h3 id="modal-title" class="text-xl font-bold mb-4 text-primary-dark"></h3>
+            <p id="modal-message" class="mb-6 text-gray-700"></p>
+            <div class="flex justify-end space-x-3">
+                <button id="modal-cancel-btn" class="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 hidden transition" autofocus>Cancel</button>
+                <button id="modal-ok-btn" class="px-4 py-2 bg-accent-gold text-black rounded-lg font-semibold hover:bg-amber-600 transition">OK</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Main Header Navigation -->
+    <header id="app-header" class="bg-primary-dark shadow-lg sticky top-0 z-40">
+        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+            <h1 class="text-2xl font-extrabold text-white">"Good food, good mood."</h1>
+            <nav id="nav-tabs" class="flex space-x-2 sm:space-x-4">
+                <button id="nav-customer" data-view="customer-view" class="py-2 px-3 sm:px-4 rounded-lg font-semibold bg-accent-gold text-white hover:bg-amber-600 transition duration-150 text-sm sm:text-base">Customer Menu</button>
+                <button id="nav-admin" data-view="login-view" class="py-2 px-3 sm:px-4 rounded-lg font-semibold text-gray-300 hover:text-white transition duration-150 text-sm sm:text-base">Admin</button>
+                <button id="nav-chef" data-view="login-view" class="py-2 px-3 sm:px-4 rounded-lg font-semibold text-gray-300 hover:text-white transition duration-150 text-sm sm:text-base">Chef KDS</button>
+                <button id="nav-qr" data-view="qr-view" class="py-2 px-3 sm:px-4 rounded-lg font-semibold text-gray-300 hover:text-white transition duration-150 text-sm sm:text-base">QR Menu</button>
+            </nav>
+            <div id="auth-status" class="text-xs text-gray-400 hidden sm:block">Not Logged In</div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="container mx-auto px-4 py-8">
+        <!-- Loading Indicator -->
+        <div id="loading-indicator" class="text-center p-10 text-xl font-semibold text-primary-dark">
+            <div class="animate-spin inline-block w-8 h-8 border-4 border-accent-gold border-t-transparent rounded-full"></div>
+            <p class="mt-4">Loading application...</p>
+        </div>
+
+        <!-- 1. LOGIN VIEW (OTP with Firebase Phone Auth) -->
+        <div id="login-view" class="flex justify-center items-start pt-10 md:pt-20 h-full hidden">
+            <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md">
+                <h2 class="text-3xl text-primary-dark font-bold mb-6 text-center">Staff Login (Phone/OTP)</h2>
+                <p class="text-sm text-center text-gray-500 mb-6">
+                    Enter your registered phone number. (Mocks: **123** for Admin, **456** for Chef)
+                </p>
+                <form id="login-form">
+                    <div class="mb-4">
+                        <label for="login-phone" class="block text-sm font-medium text-gray-700 mb-1">Phone Number (Starts with +91)</label>
+                        <div class="flex">
+                            <!-- Pre-filled Country Code -->
+                            <span class="inline-flex items-center px-3 text-gray-500 bg-gray-100 border border-r-0 border-gray-300 rounded-l-lg text-lg font-semibold">
+                                +91
+                            </span>
+                            <input type="tel" id="login-phone" required class="mt-1 block w-full rounded-r-lg border-gray-300 shadow-sm p-3 border" placeholder="Enter 10 digit number (e.g., 9876543210)">
+                        </div>
+                    </div>
+                    <!-- Shared Password Login -->
+                    <div class="mb-4">
+                        <label for="login-password" class="block text-sm font-medium text-gray-700 mb-1">Staff Password (optional)</label>
+                        <input type="password" id="login-password" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border" placeholder="Enter shared staff password to login">
+                        <p class="text-xs text-gray-400 mt-2">Enter password to sign in as staff (bypasses OTP). Leave empty to use OTP.</p>
+                    </div>
+                    
+                    <div id="otp-controls-container">
+                        <!-- Recaptcha will be invisibly attached to this button -->
+                        <button type="button" id="send-otp-btn" class="w-full bg-blue-600 text-white py-3 rounded-lg font-bold text-lg hover:bg-blue-700 transition duration-150 shadow-lg mb-4">
+                            Send OTP
+                        </button>
+                        
+                        <div id="otp-verification-section" class="hidden">
+                            <div class="mb-6">
+                                <label for="login-otp" class="block text-sm font-medium text-gray-700 mb-1">One-Time Password (OTP)</label>
+                                <input type="number" id="login-otp" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border" placeholder="Enter 6-digit OTP" disabled>
+                                <p id="otp-timer" class="text-sm text-red-500 mt-2 hidden">OTP timer starts after successful request.</p>
+                            </div>
+                            <button type="submit" id="verify-otp-btn" class="w-full bg-primary-dark text-white py-3 rounded-lg font-bold text-lg hover:bg-gray-800 transition duration-150 shadow-lg" disabled>
+                                Verify & Log In
+                            </button>
+                        </div>
+                    </div>
+                </form>
+                <p id="login-error" class="text-red-500 text-center mt-4 hidden"></p>
+                <div id="staff-controls" class="mt-6 pt-4 border-t border-gray-200 hidden">
+                    <p class="text-sm text-gray-600 mb-2 font-semibold text-center">Quick Access:</p>
+                    <button id="view-admin-btn" data-view="admin-view" class="w-full bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700 transition duration-150 mb-2">Go to Admin View</button>
+                    <button id="view-chef-btn" data-view="chef-view" class="w-full bg-green-600 text-white py-2 rounded-lg font-semibold hover:bg-green-700 transition duration-150">Go to Chef View</button>
+                    <button id="logout-btn" class="w-full mt-4 bg-red-600 text-white py-2 rounded-lg font-semibold hover:bg-red-700 transition duration-150">Log Out</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. CUSTOMER VIEW (The Menu) -->
+        <div id="customer-view" class="hidden grid lg:grid-cols-3 gap-8">
+            <div class="lg:col-span-2">
+                <h2 class="text-4xl text-primary-dark font-semibold border-b-2 border-accent-gold pb-3 mb-6">
+                    Our Menu
+                </h2>
+                
+                <!-- START: Filter Buttons Container -->
+                <div id="filters-container" class="mb-6 bg-white p-4 rounded-xl shadow-md space-y-4">
+                    <p class="text-lg font-bold text-primary-dark">Filter by Dietary Status:</p>
+                    <div id="customer-filters" class="flex flex-wrap gap-3">
+                        <button data-filter="all" class="filter-btn py-2 px-4 rounded-lg font-semibold filter-all bg-primary-dark text-white hover:bg-gray-700 transition duration-150">Show All</button>
+                        <button data-filter="veg" class="filter-btn py-2 px-4 rounded-lg font-semibold filter-veg text-green-700 hover:bg-green-200 transition duration-150">Vegetarian</button>
+                        <button data-filter="non-veg" class="filter-btn py-2 px-4 rounded-lg font-semibold filter-non-veg text-red-700 hover:bg-red-200 transition duration-150">Non-Vegetarian</button>
+                    </div>
+                    
+                    <p class="text-lg font-bold text-primary-dark pt-4 border-t border-gray-100">Filter by Category:</p>
+                    <div id="category-filters" class="flex flex-wrap gap-3">
+                        <button data-filter="all" class="category-btn py-2 px-4 rounded-lg font-semibold bg-primary-dark text-white transition duration-150">All Categories</button>
+                        <button data-filter="appetizers" class="category-btn py-2 px-4 rounded-lg font-semibold text-gray-700 hover:bg-gray-300 transition duration-150">Appetizers</button>
+                        <button data-filter="main-courses" class="category-btn py-2 px-4 rounded-lg font-semibold text-gray-700 hover:bg-gray-300 transition duration-150">Main Courses</button>
+                        <button data-filter="desserts" class="category-btn py-2 px-4 rounded-lg font-semibold text-gray-700 hover:bg-gray-300 transition duration-150">Desserts</button>
+                        <button data-filter="beverages" class="category-btn py-2 px-4 rounded-lg font-semibold text-gray-700 hover:bg-gray-300 transition duration-150">Beverages</button>
+                    </div>
+                </div>
+                <!-- END: Filter Buttons Container -->
+
+                <div id="customer-content" class="space-y-8">
+                    <!-- Menu items will be rendered here -->
+                    <div class="text-center text-gray-500 p-10 bg-white rounded-xl shadow-md" id="customer-menu-empty">
+                        <p class="font-semibold text-lg">Menu is currently empty. Check back soon!</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Cart Summary (Sticky on the right for desktop, hidden overlay on mobile) -->
+            <div class="lg:col-span-1">
+                <div id="cart-summary" class="bg-primary-dark p-6 rounded-xl shadow-2xl text-white
+                                                 lg:sticky lg:top-20 lg:h-fit lg:overflow-y-auto
+                                                 fixed inset-0 lg:block z-40 hidden 
+                                                 overflow-y-auto">
+                    
+                    <button id="close-mobile-cart" class="lg:hidden absolute top-4 right-4 text-white hover:text-accent-gold p-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+
+                    <h3 class="text-3xl font-bold text-accent-gold mb-4 border-b border-gray-600 pb-2">Your Order</h3>
+                    
+                    <div class="mb-4">
+                        <label for="table-id" class="block text-sm font-medium text-gray-300 mb-1">Your Table/YourName</label>
+                        <input type="text" id="table-id" class="w-full p-3 rounded-lg text-primary-dark" placeholder="Table 5 or Your Name" required>
+                    </div>
+
+                    <!-- Mobile Number Input Field -->
+                    <div class="mb-4">
+                        <label for="mobile-number" class="block text-sm font-medium text-gray-300 mb-1">Mobile Number (Optional)</label>
+                        <input type="tel" id="mobile-number" class="w-full p-3 rounded-lg text-primary-dark" placeholder="e.g., 9876543210">
+                        <p class="text-xs text-gray-400 mt-1">'You will get notified when the food is ready'.</p>
+                    </div>
+                    <!-- END: ADDED Mobile Number Input Field -->
+
+                    <div id="cart-items-list" class="space-y-3 mb-4 text-base max-h-56 overflow-y-auto scroll-hidden">
+                        <p id="cart-message" class="text-gray-400">Your cart is empty. Start adding items!</p>
+                    </div>
+                    
+                    <div class="flex justify-between items-center pt-4 border-t border-accent-gold">
+                        <span class="text-2xl font-bold">Total Bill:</span>
+                        <span id="cart-total" class="text-3xl font-extrabold text-accent-gold">₹0.00</span>
+                    </div>
+                    
+                    <button id="place-order-btn" onclick="window.placeOrder()" disabled class="w-full mt-4 status-new text-white py-3 rounded-lg font-bold text-xl hover:bg-green-700 transition duration-150 shadow-lg opacity-50 cursor-not-allowed">
+                        Place Order
+                    </button>
+                    <button id="clear-cart-btn" onclick="window.clearCart()" class="w-full mt-2 bg-red-600 text-white py-3 rounded-lg font-bold text-xl hover:bg-red-700 transition duration-150 shadow-lg">
+                        Clear Cart
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. CHEF KITCHEN DISPLAY SYSTEM (KDS) -->
+        <div id="chef-view" class="hidden">
+            <h2 class="text-4xl text-primary-dark font-semibold border-b-2 border-status-progress pb-3 mb-6">
+                Chef Kitchen Display System (KDS)
+            </h2>
+            <div id="chef-status-message" class="text-center text-primary-dark font-semibold p-3 mb-4 hidden"></div>
+            <div id="chef-content" class="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <!-- Orders will be rendered here -->
+                <div class="md:col-span-2 lg:col-span-3 xl:col-span-4 text-center text-gray-500 p-10 bg-white rounded-xl shadow-md" id="chef-orders-empty">
+                    <p class="font-semibold text-xl">No new orders at the moment. Enjoy the break!</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. ADMIN MENU MANAGEMENT EDITOR -->
+        <div id="admin-view" class="hidden grid lg:grid-cols-3 gap-8">
+            <div class="lg:col-span-1">
+                <h2 class="text-4xl text-primary-dark font-semibold border-b-2 border-primary-dark pb-3 mb-8">
+                    Menu Management Editor
+                </h2>
+                
+                <div class="bg-white p-6 rounded-xl shadow-lg mb-8 lg:sticky lg:top-20">
+                    <h3 id="admin-form-title" class="text-2xl font-bold text-primary-dark mb-4">Add New Item</h3>
+                    <form id="admin-form" onsubmit="window.saveMenuItem(event)">
+                        <input type="hidden" id="admin-item-id">
+                        
+                        <div class="mb-4">
+                            <label for="admin-item-name" class="block text-sm font-medium text-gray-700">Name</label>
+                            <input type="text" id="admin-item-name" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border">
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="admin-item-description" class="block text-sm font-medium text-gray-700">Description</label>
+                            <textarea id="admin-item-description" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border" rows="3"></textarea>
+                        </div>
+                        
+                        <!-- NEW FIELD: Image URL for menu item -->
+                        <div class="mb-4">
+                            <label for="admin-item-image-url" class="block text-sm font-medium text-gray-700">Image URL (Optional)</label>
+                            <input type="url" id="admin-item-image-url" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border" placeholder="e.g., https://placehold.co/400x200/F59E0B/FFFFFF?text=Dish">
+                        </div>
+                        <!-- END NEW FIELD -->
+
+                        <!-- NEW FIELD: Dietary Status -->
+                        <div class="mb-4">
+                            <label for="admin-item-dietary" class="block text-sm font-medium text-gray-700">Dietary Status</label>
+                            <select id="admin-item-dietary" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border bg-white">
+                                <option value="veg">Vegetarian (Green)</option>
+                                <option value="non-veg">Non-Vegetarian (Red)</option>
+                            </select>
+                        </div>
+                        <!-- END NEW FIELD -->
+
+                        <div class="grid grid-cols-2 gap-4 mb-6">
+                            <div>
+                                <label for="admin-item-price" class="block text-sm font-medium text-gray-700">Price (₹)</label>
+                                <input type="number" id="admin-item-price" required min="0.01" step="0.01" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border">
+                            </div>
+                            <div>
+                                <label for="admin-item-category" class="block text-sm font-medium text-gray-700">Category</label>
+                                <select id="admin-item-category" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border bg-white">
+                                    <option value="" disabled selected>Select Category</option>
+                                    <option value="appetizers">Appetizers</option>
+                                    <option value="main-courses">Main Courses</option>
+                                    <option value="desserts">Desserts</option>
+                                    <option value="beverages">Beverages</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <button type="submit" id="admin-save-btn" class="w-full bg-primary-dark text-white py-3 rounded-lg font-bold text-xl hover:bg-gray-800 transition duration-150 shadow-lg">
+                            Save Item
+                        </button>
+                        <button type="button" onclick="window.resetAdminForm()" class="w-full mt-2 bg-gray-200 text-gray-700 py-3 rounded-lg font-bold text-xl hover:bg-gray-300 transition duration-150 shadow-lg">
+                            Clear/Cancel Edit
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Menu List -->
+            <div class="lg:col-span-2">
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <h3 class="text-2xl font-bold text-primary-dark mb-4 border-b border-gray-200 pb-2">Current Menu Items</h3>
+                    <div id="admin-items-list" class="space-y-4">
+                        <!-- Menu items will be rendered here for editing/deleting -->
+                        <div class="text-center text-gray-500 p-10" id="admin-menu-empty">
+                            <p class="font-semibold text-lg">No menu items found. Add one above!</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 5. QR CODE VIEW -->
+        <div id="qr-view" class="hidden text-center bg-white p-8 rounded-xl shadow-lg w-full max-w-lg mx-auto">
+            <h2 class="text-4xl text-primary-dark font-semibold border-b-2 border-accent-gold pb-3 mb-8">
+                Customer Scan Code
+            </h2>
+            <p class="text-gray-700 mb-6">Scan this code to immediately access the Customer Menu.</p>
+            
+            <div id="qrcode-container" class="mx-auto p-4 inline-block bg-white rounded-lg shadow-xl border-8 border-accent-gold">
+                <!-- QR Code will be generated here -->
+            </div>
+            
+            <a id="qr-link" href="#" target="_blank" class="mt-8 inline-block text-lg font-bold text-blue-600 hover:text-blue-800 transition">
+                Direct Link to Customer Menu
+            </a>
+        </div>
+    </main>
+
+    <!-- Floating Cart Button (visible on small screens only when customer view is active) -->
+    <button id="mobile-cart-btn" class="fixed bottom-6 right-6 bg-accent-gold text-primary-dark p-4 rounded-full shadow-2xl z-50 flex items-center space-x-2 transition transform hover:scale-105 lg:hidden hidden">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
+            <path d="M3 1a1 1 0 000 2h1.22l.305 1.25H16.48a1 1 0 00.958-.756l1.325-4.526A1 1 0 0017 2H5.21z" />
+            <path d="M6 13a3 3 0 100 6 3 3 0 000-6zm10 0a3 3 0 100 6 3 3 0 000-6z" />
+        </svg>
+        <span id="mobile-cart-count" class="font-bold text-lg">0</span>
+    </button>
+
+    <!-- Recaptcha Container (Required for Firebase Phone Auth) -->
+    <div id="recaptcha-container" class="hidden"></div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-analytics.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut, RecaptchaVerifier, signInWithPhoneNumber } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, serverTimestamp, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        // --- HARDCODED FIREBASE CONFIGURATION ---
+        const REAL_FIREBASE_CONFIG = {
+            apiKey: "AIzaSyAvc_aw2C1lcH5-uCi0lC-m9eZthk5wn4k",
+            authDomain: "restaurant-df7c9.firebaseapp.com",
+            projectId: "restaurant-df7c9",
+            storageBucket: "restaurant-df7c9.firebasestorage.app",
+            messagingSenderId: "574078336871",
+            appId: "1:574078336871:web:abd866fe886879795e39c2",
+            measurementId: "G-QPJWXK721P"
+        };
+        // Use the hardcoded config for Firebase initialization
+        const firebaseConfig = REAL_FIREBASE_CONFIG;
+        
+        // --- GLOBAL VARIABLES & ENVIRONMENT CHECK ---
+
+        // Use global environment variables provided by the Canvas environment
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        // MANDATORY: Use __app_id for file paths if available, otherwise fallback to the projectId in the config.
+        const appId = typeof __app_id !== 'undefined' ? __app_id : REAL_FIREBASE_CONFIG.projectId;
+
+        let app, db, auth;
+        let currentUserId = null;
+        let isAuthenticated = false; // Mock authentication status for Admin/Chef
+        let staffRole = null; // Stores 'admin' or 'chef'
+        let menuItems = [];
+        let cartItems = [];
+        
+        // --- OTP/PHONE AUTH STATE VARIABLES ---
+        let confirmationResult = null;
+        let appVerifier = null;
+        
+        let currentDietaryFilter = 'all'; // 'all', 'veg', or 'non-veg'
+        let currentCategoryFilter = 'all'; // 'all', 'appetizers', 'main-courses', 'desserts', 'beverages'
+
+        // Firestore paths for public data
+        const MENU_COLLECTION_PATH = `artifacts/${appId}/public/data/menuItems`;
+        const ORDERS_COLLECTION_PATH = `artifacts/${appId}/public/data/orders`;
+        
+        // --- CONSTANT FOR INDIA PHONE CODE ---
+        const COUNTRY_CODE = '+91';
+
+        // Mock staff mapping (Full Phone Number -> Role)
+        const STAFF_ROLES = {
+            '+91123': 'admin', // Mock admin phone number (+91 prepended to 123)
+            '+91456': 'chef'  // Mock chef phone number (+91 prepended to 456)
+        };
+        // Shared mock password for staff login (in production replace with secure auth)
+        const SHARED_PASSWORD = typeof __shared_password !== 'undefined' ? __shared_password : 'restaurant123';
+
+        // UI Elements (simplified for brevity)
+        const views = {
+            'login-view': document.getElementById('login-view'),
+            'customer-view': document.getElementById('customer-view'),
+            'admin-view': document.getElementById('admin-view'),
+            'chef-view': document.getElementById('chef-view'),
+            'qr-view': document.getElementById('qr-view')
+        };
+        const loginForm = document.getElementById('login-form');
+        const loginPhoneInput = document.getElementById('login-phone');
+        const loginOtpInput = document.getElementById('login-otp');
+        const sendOtpBtn = document.getElementById('send-otp-btn');
+        const verifyOtpBtn = document.getElementById('verify-otp-btn');
+        const otpVerificationSection = document.getElementById('otp-verification-section');
+        const customerContent = document.getElementById('customer-content');
+        const customerMenuEmpty = document.getElementById('customer-menu-empty');
+        const adminItemsList = document.getElementById('admin-items-list');
+        const adminMenuEmpty = document.getElementById('admin-menu-empty');
+        const chefContent = document.getElementById('chef-content');
+        const chefOrdersEmpty = document.getElementById('chef-orders-empty');
+        const cartTotalSpan = document.getElementById('cart-total');
+        const cartItemsList = document.getElementById('cart-items-list');
+        const placeOrderBtn = document.getElementById('place-order-btn');
+        const tableIdInput = document.getElementById('table-id');
+        const navTabs = document.getElementById('nav-tabs');
+        const authStatusDiv = document.getElementById('auth-status');
+        const loadingIndicator = document.getElementById('loading-indicator');
+        
+        // New Mobile Cart Elements
+        const mobileCartBtn = document.getElementById('mobile-cart-btn');
+        const mobileCartCount = document.getElementById('mobile-cart-count');
+        const cartSummary = document.getElementById('cart-summary');
+        const closeMobileCartBtn = document.getElementById('close-mobile-cart');
+
+        // Modal elements
+        const modalBackdrop = document.getElementById('modal-backdrop');
+        const modalTitle = document.getElementById('modal-title');
+        const modalMessage = document.getElementById('modal-message');
+        const modalOkBtn = document.getElementById('modal-ok-btn');
+        const modalCancelBtn = document.getElementById('modal-cancel-btn');
+
+
+        // --- UTILITY FUNCTIONS ---
+
+        function showModal(title, message, isConfirm = false) {
+            return new Promise((resolve) => {
+                modalOkBtn.textContent = 'OK';  
+                modalCancelBtn.textContent = 'Cancel';  
+
+                modalTitle.textContent = title;
+                modalMessage.textContent = message;
+                modalBackdrop.classList.remove('hidden');
+                modalBackdrop.classList.add('flex');
+                
+                modalOkBtn.onclick = null;
+                modalCancelBtn.onclick = null;
+
+                if (isConfirm) {
+                    modalCancelBtn.classList.remove('hidden');
+                    modalOkBtn.textContent = 'Confirm';
+                    
+                    modalOkBtn.onclick = () => {
+                        modalBackdrop.classList.add('hidden');
+                        modalBackdrop.classList.remove('flex');
+                        resolve(true);
+                    };
+                    modalCancelBtn.onclick = () => {
+                        modalBackdrop.classList.add('hidden');
+                        modalBackdrop.classList.remove('flex');
+                        resolve(false);
+                    };
+                } else {
+                    modalCancelBtn.classList.add('hidden');
+                    modalOkBtn.textContent = 'OK';
+                    
+                    modalOkBtn.onclick = () => {
+                        modalBackdrop.classList.add('hidden');
+                        modalBackdrop.classList.remove('flex');
+                        resolve(true);
+                    };
+                }
+            });
+        }
+
+        const getDietaryIndicator = (status) => {
+            let colorClass = 'bg-gray-400';
+            let label = 'Unknown';
+            if (status === 'veg') { colorClass = 'bg-green-500'; label = 'Vegetarian'; }
+            if (status === 'non-veg') { colorClass = 'bg-red-500'; label = 'Non-Vegetarian'; }
+            // Added simple box indicator
+            return `
+                <span class="inline-block w-3 h-3 rounded-sm ${colorClass} mr-2 flex-shrink-0" title="${label}">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-full h-full p-[1px] text-white" viewBox="0 0 100 100" fill="currentColor">
+                        <circle cx="50" cy="50" r="40"/>
+                    </svg>
+                </span>
+            `;
+        };
+
+        const getPaymentIndicator = (status) => {
+            if (status === 'Completed') {
+                return `
+                    <div class="flex items-center space-x-1 text-sm font-bold text-green-600 bg-green-100 px-2 py-1 rounded-full">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 13.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                        </svg>
+                        <span>Paid</span>
+                    </div>
+                `;
+            } else {
+                return `
+                    <div class="flex items-center space-x-1 text-sm font-bold text-red-600 bg-red-100 px-2 py-1 rounded-full">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                        </svg>
+                        <span>Pending</span>
+                    </div>
+                `;
+            }
+        };
+
+        // --- AUTHENTICATION & VIEW MANAGEMENT ---
+
+        function updateStaffAccess(phoneNumber) {
+            staffRole = STAFF_ROLES[phoneNumber] || null;
+            isAuthenticated = !!staffRole;
+            
+            if (isAuthenticated) {
+                authStatusDiv.textContent = `Logged in as: ${staffRole.toUpperCase()}`;
+                
+                document.getElementById('staff-controls').classList.remove('hidden');
+                document.getElementById('view-admin-btn').classList.toggle('hidden', staffRole !== 'admin');
+                document.getElementById('view-chef-btn').classList.toggle('hidden', staffRole !== 'chef');
+
+                document.getElementById('nav-admin').dataset.view = 'admin-view';
+                document.getElementById('nav-chef').dataset.view = 'chef-view';
+
+                const targetViewBtn = document.querySelector('[data-target-view]');
+                const targetView = targetViewBtn?.dataset.targetView;
+                if (targetViewBtn) targetViewBtn.removeAttribute('data-target-view');
+
+                const nextView = targetView || (staffRole === 'admin' ? 'admin-view' : 'chef-view');
+                window.switchView(nextView);
+            } else {
+                showModal("Access Denied", "Your authenticated phone number is not registered to a staff role.");
+            }
+        }
+
+        // Set staff access programmatically (used for password-based login)
+        function setStaffAccess(role = 'staff') {
+            staffRole = role; // 'admin' | 'chef' | 'staff'
+            isAuthenticated = !!role;
+
+            if (isAuthenticated) {
+                authStatusDiv.textContent = `Logged in as: ${role.toUpperCase()}`;
+                document.getElementById('staff-controls').classList.remove('hidden');
+
+                // Show/hide quick-access buttons depending on role. 'staff' sees both.
+                document.getElementById('view-admin-btn').classList.toggle('hidden', role === 'chef');
+                document.getElementById('view-chef-btn').classList.toggle('hidden', role === 'admin');
+
+                document.getElementById('nav-admin').dataset.view = 'admin-view';
+                document.getElementById('nav-chef').dataset.view = 'chef-view';
+
+                // If there was a deferred view request, handle it
+                const targetViewBtn = document.querySelector('[data-target-view]');
+                const targetView = targetViewBtn?.dataset.targetView;
+                if (targetViewBtn) targetViewBtn.removeAttribute('data-target-view');
+
+                const nextView = targetView || 'admin-view';
+                window.switchView(nextView);
+            }
+        }
+
+        async function setupFirebase() {
+            try {
+                // setLogLevel('debug'); // Uncomment for Firestore debugging
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                
+                // Initialize Recaptcha Verifier
+                appVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+                    'size': 'invisible', // Invisible reCAPTCHA
+                    'callback': (response) => {
+                        // reCAPTCHA solved
+                    },
+                    'expired-callback': () => {
+                        showModal("Verification Expired", "The reCAPTCHA token expired. Please try again.");
+                    }
+                });
+
+                onAuthStateChanged(auth, async (user) => {
+                    if (!user) {
+                        if (initialAuthToken) {
+                            await signInWithCustomToken(auth, initialAuthToken);
+                        } else {
+                            await signInAnonymously(auth);
+                        }
+                        return; // Wait for the next listener callback
+                    }
+                    
+                    currentUserId = user.uid;
+                    if (user.phoneNumber && STAFF_ROLES[user.phoneNumber]) {
+                        updateStaffAccess(user.phoneNumber);
+                    } else {
+                        authStatusDiv.textContent = `User ID: ${currentUserId.substring(0, 8)}...`;
+                    }
+                    
+                    initRealtimeListeners();  
+                    generateQRCode(window.location.href.split('#')[0] + '#customer-view');
+                    loadingIndicator.classList.add('hidden');
+                    // Only switch to customer view if not already authenticated as staff
+                    if (!isAuthenticated) {
+                        window.switchView('customer-view');
+                    }
+                });
+
+            } catch (error) {
+                console.error("Firebase setup failed:", error);
+                showModal("Setup Error", `Could not initialize Firebase. Check console for details: ${error.message}.`);
+                loadingIndicator.classList.add('hidden');
+                window.switchView('customer-view');
+            }
+        }
+        
+        window.switchView = (viewId) => {
+            const isStaffView = ['admin-view', 'chef-view'].includes(viewId);
+            
+            document.querySelectorAll('#nav-tabs button').forEach(btn => {
+                btn.classList.remove('bg-accent-gold', 'text-white');
+                btn.classList.add('text-gray-300');
+            });
+
+            Object.values(views).forEach(v => v.classList.add('hidden'));
+            
+            // Hide mobile cart button and cart overlay when switching views
+            mobileCartBtn.classList.add('hidden');
+            cartSummary.classList.add('hidden');
+            document.body.classList.remove('overflow-hidden', 'lg:overflow-auto');
+
+
+            if (isStaffView && !isAuthenticated) {
+                views['login-view'].classList.remove('hidden');
+                document.getElementById('staff-controls').classList.add('hidden'); 
+                
+                const navBtnId = viewId === 'admin-view' ? 'nav-admin' : 'nav-chef';
+                const navBtn = document.getElementById(navBtnId);
+                navBtn.classList.add('bg-accent-gold', 'text-white');
+                navBtn.classList.remove('text-gray-300');
+
+                navBtn.dataset.targetView = viewId;
+                
+                return;
+            }
+            
+            const targetView = views[viewId];
+            if (targetView) {
+                targetView.classList.remove('hidden');
+                
+                const navBtn = document.getElementById(`nav-${viewId.split('-')[0]}`);
+                if (viewId === 'login-view') {
+                } else if (navBtn) {
+                    navBtn.classList.add('bg-accent-gold', 'text-white');
+                    navBtn.classList.remove('text-gray-300');
+                }
+            }
+            
+            if (viewId === 'customer-view') {
+                window.applyMenuFilters(currentDietaryFilter, currentCategoryFilter);
+                window.updateCartDisplay(); // Make sure the mobile button is visible and updated
+                mobileCartBtn.classList.remove('hidden');
+            }
+        };
+        
+        // --- PHONE AUTH FLOW FUNCTIONS ---
+
+        function resetOtpControls(clearPhone = false) {
+            confirmationResult = null;
+            loginOtpInput.value = '';
+            loginOtpInput.disabled = true;
+            verifyOtpBtn.disabled = true;
+            otpVerificationSection.classList.add('hidden');
+            sendOtpBtn.classList.remove('hidden');
+            sendOtpBtn.textContent = 'Send OTP';
+            if(clearPhone) loginPhoneInput.value = '';
+            document.getElementById('login-error').classList.add('hidden');
+        }
+
+        window.handleSendOtp = async () => {
+            if (!auth) return showModal("Error", "Authentication service not initialized.");
+            
+            const phoneNumberSuffix = loginPhoneInput.value.trim();
+            const errorDiv = document.getElementById('login-error');
+            errorDiv.classList.add('hidden');
+            
+            const fullPhoneNumber = COUNTRY_CODE + phoneNumberSuffix;
+
+            if (phoneNumberSuffix !== '123' && phoneNumberSuffix !== '456') {
+                errorDiv.textContent = 'Please enter a mock staff phone number (e.g., 123 or 456) for testing.';
+                errorDiv.classList.remove('hidden');
+                return;
+            }
+            
+            if (!STAFF_ROLES[fullPhoneNumber]) {
+                 errorDiv.textContent = 'The entered number is not registered to a staff account.';
+                 errorDiv.classList.remove('hidden');
+                 return;
+            }
+
+            try {
+                sendOtpBtn.disabled = true;
+                sendOtpBtn.textContent = 'Sending...';
+
+                // We need to wait for the Recaptcha to resolve before calling signInWithPhoneNumber
+                const recaptchaToken = await appVerifier.verify();
+                
+                confirmationResult = await signInWithPhoneNumber(auth, fullPhoneNumber, appVerifier);
+                
+                sendOtpBtn.textContent = 'OTP Sent (Verify Below)';
+                otpVerificationSection.classList.remove('hidden');
+                loginOtpInput.disabled = false;
+                verifyOtpBtn.disabled = false;
+                sendOtpBtn.classList.add('hidden');
+                
+                showModal("OTP Sent", `An OTP has been sent to ${fullPhoneNumber}. Please enter it below to verify. Mock OTP is usually 123456 in dev mode.`);
+
+            } catch (error) {
+                console.error("Error sending OTP:", error);
+                errorDiv.textContent = `Failed to send OTP. Check console. Error: ${error.message.substring(0, 50)}...`;
+                errorDiv.classList.remove('hidden');
+                sendOtpBtn.disabled = false;
+                sendOtpBtn.textContent = 'Resend OTP';
+                if (appVerifier && appVerifier.clear) appVerifier.clear(); // Reset recaptcha on failure
+            }
+        };
+        
+        window.handleVerifyOtp = async (e) => {
+            e.preventDefault();
+            const enteredOtp = loginOtpInput.value.trim();
+            const errorDiv = document.getElementById('login-error');
+            errorDiv.classList.add('hidden');
+
+            if (!confirmationResult) {
+                errorDiv.textContent = 'Please request an OTP first.';
+                errorDiv.classList.remove('hidden');
+                return;
+            }
+
+            if (enteredOtp.length < 6) {
+                 errorDiv.textContent = 'OTP must be 6 digits.';
+                 errorDiv.classList.remove('hidden');
+                 return;
+            }
+
+            try {
+                verifyOtpBtn.disabled = true;
+                verifyOtpBtn.textContent = 'Verifying...';
+
+                const result = await confirmationResult.confirm(enteredOtp);
+                const user = result.user;
+
+                if (user.phoneNumber && STAFF_ROLES[user.phoneNumber]) {
+                    // Success is handled by onAuthStateChanged listener
+                    resetOtpControls(true); 
+                } else {
+                    await signOut(auth);
+                    showModal("Role Error", "Authenticated user does not have a registered staff role.");
+                    resetOtpControls(true);
+                }
+
+            } catch (error) {
+                console.error("Error verifying OTP:", error);
+                errorDiv.textContent = 'Invalid OTP. Please try again.';
+                errorDiv.classList.remove('hidden');
+                verifyOtpBtn.disabled = false;
+                verifyOtpBtn.textContent = 'Verify & Log In';
+                loginOtpInput.value = '';
+            }
+        };
+        
+        // --- Event Listeners ---
+        sendOtpBtn.addEventListener('click', window.handleSendOtp);
+        // New form submit wrapper: support shared password login or fallback to OTP verification
+        window.handleLoginSubmit = async (e) => {
+            e.preventDefault();
+            const phoneSuffix = loginPhoneInput.value.trim();
+            const fullPhoneNumber = COUNTRY_CODE + phoneSuffix;
+            const password = document.getElementById('login-password').value || '';
+
+            // If password provided, validate against SHARED_PASSWORD and allow access to both admin/chef
+            if (password.length > 0) {
+                if (password === SHARED_PASSWORD) {
+                    // Optionally ensure phone is one of the staff phones (123/456) or allow any
+                    if (phoneSuffix === '123' || phoneSuffix === '456' || STAFF_ROLES[fullPhoneNumber]) {
+                        setStaffAccess('staff');
+                        showModal('Logged In', 'Staff access granted. You can access Admin and Chef views.');
+                        return;
+                    } else {
+                        showModal('Access Denied', 'Phone number not recognized as staff.');
+                        return;
+                    }
+                } else {
+                    showModal('Invalid Password', 'The provided password is incorrect.');
+                    return;
+                }
+            }
+
+            // No password: proceed with OTP verification flow
+            return window.handleVerifyOtp(e);
+        };
+        loginForm.addEventListener('submit', window.handleLoginSubmit);
+        
+        document.getElementById('logout-btn').onclick = async () => {
+            if (auth) await signOut(auth);
+            
+            resetOtpControls(true); 
+            isAuthenticated = false;
+            staffRole = null;
+            document.getElementById('staff-controls').classList.add('hidden');
+            document.getElementById('nav-admin').dataset.view = 'login-view';
+            document.getElementById('nav-chef').dataset.view = 'login-view';
+            showModal("Logged Out", "You have been successfully logged out from the staff console.");
+            window.switchView('customer-view');  
+        };
+        
+        document.getElementById('staff-controls').addEventListener('click', (e) => {
+            if (e.target.dataset.view) {
+                window.switchView(e.target.dataset.view);
+            }
+        });
+        
+        navTabs.addEventListener('click', (e) => {
+            const targetButton = e.target.closest('button');
+            if (targetButton && targetButton.dataset.view) {
+                window.switchView(targetButton.dataset.view);
+            }
+        });
+
+        // Mobile Cart Toggle Logic
+        mobileCartBtn.addEventListener('click', () => {
+            cartSummary.classList.remove('hidden');
+            // Prevent background scrolling on mobile when cart overlay is open
+            document.body.classList.add('overflow-hidden', 'lg:overflow-auto');
+        });
+
+        closeMobileCartBtn.addEventListener('click', () => {
+            cartSummary.classList.add('hidden');
+            // Re-enable scrolling
+            document.body.classList.remove('overflow-hidden', 'lg:overflow-auto');
+        });
+
+
+        // --- REALTIME DATA LISTENERS ---
+
+        function initRealtimeListeners() {
+            if (!db) return;
+
+            onSnapshot(collection(db, MENU_COLLECTION_PATH), (snapshot) => {
+                menuItems = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                window.renderCustomerMenu(menuItems);
+                window.renderAdminMenu(menuItems);
+            }, (error) => {
+                console.error("Error listening to menu items:", error);
+            });
+
+            const ordersQuery = query(collection(db, ORDERS_COLLECTION_PATH));
+            onSnapshot(ordersQuery, (snapshot) => {
+                const orders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                window.renderChefOrders(orders);
+            }, (error) => {
+                console.error("Error listening to orders:", error);
+            });
+        }
+        
+        window.applyMenuFilters = (dietaryFilter, categoryFilter) => {
+            currentDietaryFilter = dietaryFilter;
+            currentCategoryFilter = categoryFilter;
+            window.renderCustomerMenu(menuItems); 
+
+            // Update Dietary filter buttons UI
+            document.querySelectorAll('#customer-filters .filter-btn').forEach(btn => {
+                btn.classList.remove('bg-primary-dark', 'text-white', 'filter-veg', 'filter-non-veg', 'filter-all');
+                
+                if (btn.dataset.filter === dietaryFilter) {
+                    btn.classList.add('bg-primary-dark', 'text-white');
+                } else {
+                    if (btn.dataset.filter === 'veg') {
+                        btn.classList.add('filter-veg', 'text-green-700', 'hover:bg-green-200');
+                    } else if (btn.dataset.filter === 'non-veg') {
+                        btn.classList.add('filter-non-veg', 'text-red-700', 'hover:bg-red-200');
+                    } else { 
+                        btn.classList.add('filter-all', 'text-gray-700', 'hover:bg-gray-200');
+                    }
+                }
+            });
+
+            // Update Category filter buttons UI
+            document.querySelectorAll('#category-filters .category-btn').forEach(btn => {
+                btn.classList.remove('bg-primary-dark', 'text-white', 'text-gray-700', 'hover:bg-gray-300');
+                
+                if (btn.dataset.filter === categoryFilter) {
+                    btn.classList.add('bg-primary-dark', 'text-white');
+                } else {
+                    btn.classList.add('text-gray-700', 'hover:bg-gray-300');
+                }
+            });
+        };
+
+
+        // --- MENU MANAGEMENT & ORDERING FUNCTIONS ---
+
+        window.renderAdminMenu = (items) => {
+            adminItemsList.innerHTML = '';
+            adminMenuEmpty.classList.toggle('hidden', items.length > 0);
+
+            items.sort((a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name)).forEach(item => {
+                const itemEl = document.createElement('div');
+                itemEl.className = 'flex justify-between items-center p-4 bg-gray-50 rounded-lg shadow-sm border border-gray-200';
+                itemEl.innerHTML = `
+                    <div>
+                        <p class="text-lg font-bold text-primary-dark flex items-center">
+                            ${getDietaryIndicator(item.dietaryStatus)}
+                            <span>${item.name}</span>
+                        </p>
+                        <p class="text-sm text-gray-600">${item.category.charAt(0).toUpperCase() + item.category.slice(1)} | ₹${item.price.toFixed(2)}</p>
+                    </div>
+                    <div class="flex space-x-3">
+                        <button onclick="window.editMenuItem('${item.id}')" class="text-blue-600 hover:text-blue-800 font-semibold transition p-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zm-1.88 5.617L3 16.5V13.5l8.69-8.69 2.828 2.828z" />
+                            </svg>
+                        </button>
+                        <button onclick="window.deleteMenuItem('${item.id}')" class="text-red-600 hover:text-red-800 font-semibold transition p-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 112 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                    </div>
+                `;
+                adminItemsList.appendChild(itemEl);
+            });
+        };
+
+        window.resetAdminForm = () => {
+            document.getElementById('admin-form').reset();
+            document.getElementById('admin-item-id').value = '';
+            document.getElementById('admin-item-image-url').value = ''; 
+            document.getElementById('admin-item-dietary').value = 'veg'; 
+            document.getElementById('admin-form-title').textContent = 'Add New Item';
+            document.getElementById('admin-save-btn').textContent = 'Save Item';
+        };
+
+        window.editMenuItem = (itemId) => {
+            const item = menuItems.find(i => i.id === itemId);
+            if (item) {
+                document.getElementById('admin-item-id').value = item.id;
+                document.getElementById('admin-item-name').value = item.name;
+                document.getElementById('admin-item-description').value = item.description;
+                document.getElementById('admin-item-price').value = item.price;
+                document.getElementById('admin-item-category').value = item.category;
+                document.getElementById('admin-item-image-url').value = item.imageUrl || ''; 
+                document.getElementById('admin-item-dietary').value = item.dietaryStatus || 'veg'; 
+
+                document.getElementById('admin-form-title').textContent = `Editing: ${item.name}`;
+                document.getElementById('admin-save-btn').textContent = 'Update Item';
+
+                document.getElementById('admin-form-title').scrollIntoView({ behavior: 'smooth' });
+            }
+        };
+
+        window.deleteMenuItem = async (itemId) => {
+            if (!db) return showModal("Database Error", "Cannot connect to database.");
+            const item = menuItems.find(i => i.id === itemId);
+            if (!item) return;
+
+            const isConfirmed = await showModal("Confirm Deletion", `Are you sure you want to permanently delete '${item.name}'?`, true);
+            if (!isConfirmed) return;
+
+            try {
+                await deleteDoc(doc(db, MENU_COLLECTION_PATH, itemId));
+                showModal("Success", `${item.name} was successfully deleted.`);
+                window.resetAdminForm();
+            } catch (error) {
+                console.error("Error deleting document: ", error);
+                showModal("Error", "Failed to delete item. Please try again.");
+            }
+        };
+
+        window.saveMenuItem = async (e) => {
+            e.preventDefault();
+            
+            if (!db) return showModal("Database Error", "Cannot save. Firebase is not initialized.");
+
+            const itemId = document.getElementById('admin-item-id').value;
+            const itemData = {
+                name: document.getElementById('admin-item-name').value,
+                description: document.getElementById('admin-item-description').value,
+                price: parseFloat(document.getElementById('admin-item-price').value),
+                category: document.getElementById('admin-item-category').value,
+                imageUrl: document.getElementById('admin-item-image-url').value, 
+                dietaryStatus: document.getElementById('admin-item-dietary').value, 
+                updatedAt: serverTimestamp()
+            };
+
+            try {
+                if (itemId) {
+                    await updateDoc(doc(db, MENU_COLLECTION_PATH, itemId), itemData);
+                    showModal("Success", `${itemData.name} was updated successfully.`);
+                } else {
+                    itemData.createdAt = serverTimestamp();
+                    await addDoc(collection(db, MENU_COLLECTION_PATH), itemData);
+                    showModal("Success", `${itemData.name} was added to the menu.`);
+                }
+                window.resetAdminForm();
+            } catch (error) {
+                console.error("Error saving document: ", error);
+                showModal("Error", "Failed to save item. Please check the data and try again.");
+            }
+        };
+
+        window.renderCustomerMenu = (items) => {
+            customerContent.innerHTML = '';
+            
+            let filteredItems = items;
+
+            if (currentDietaryFilter !== 'all') {
+                filteredItems = filteredItems.filter(item => item.dietaryStatus === currentDietaryFilter);
+            }
+
+            if (currentCategoryFilter !== 'all') {
+                filteredItems = filteredItems.filter(item => item.category === currentCategoryFilter);
+            }
+
+            const categories = filteredItems.reduce((acc, item) => {
+                (acc[item.category] = acc[item.category] || []).push(item);
+                return acc;
+            }, {});
+
+            customerMenuEmpty.classList.toggle('hidden', filteredItems.length > 0);
+
+            for (const category in categories) {
+                const categorySection = document.createElement('div');
+                categorySection.innerHTML = `
+                    <h3 class="text-3xl font-bold text-primary-dark mb-4 border-b border-gray-300 pb-2">${category.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}</h3>
+                    <div class="space-y-4">
+                        ${categories[category].sort((a, b) => a.name.localeCompare(b.name)).map(item => {
+                            const defaultImageUrl = 'https://placehold.co/150x150/f59e0b/ffffff?text=FOOD';
+                            const imageSrc = item.imageUrl || defaultImageUrl;
+
+                            return `
+                                <!-- START: Updated Card Structure for aesthetics and images -->
+                                <div class="menu-card bg-white rounded-xl shadow-lg overflow-hidden flex flex-col md:flex-row transition duration-300 transform">
+                                    <img src="${imageSrc}" 
+                                        onerror="this.onerror=null;this.src='${defaultImageUrl}'"
+                                        class="w-full md:w-48 h-36 md:h-auto object-cover" loading="lazy" alt="${item.name}">
+                                    <div class="p-4 md:p-5 flex-grow flex flex-col justify-between">
+                                        <!-- Content block -->
+                                        <div class="flex justify-between items-start mb-2">
+                                            <p class="text-xl font-bold text-primary-dark flex items-center">
+                                                ${getDietaryIndicator(item.dietaryStatus)} 
+                                                <span>${item.name}</span>
+                                            </p>
+                                            <span class="text-2xl font-extrabold text-accent-gold">₹${item.price.toFixed(2)}</span>
+                                        </div>
+                                        <p class="text-sm text-gray-500 mb-4 flex-grow">${item.description}</p>
+                                        <!-- Button block -->
+                                        <div class="flex justify-end">
+                                            <button onclick="window.addToCart('${item.id}')" class="status-new text-white p-3 rounded-lg shadow-md hover:bg-green-700 transition duration-150 flex items-center space-x-1 font-semibold">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                                                </svg>
+                                                <span>Add to Cart</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- END: Updated Card Structure -->
+                            `;
+                        }).join('')}
+                    </div>
+                `;
+                customerContent.appendChild(categorySection);
+            }
+        };
+
+        window.addToCart = (itemId) => {
+            const item = menuItems.find(i => i.id === itemId);
+            if (!item) return;
+
+            const existingItem = cartItems.find(c => c.id === itemId);
+            if (existingItem) {
+                existingItem.quantity += 1;
+            } else {
+                cartItems.push({ ...item, quantity: 1 });
+            }
+            window.updateCartDisplay();
+        };
+
+        window.removeFromCart = (itemId) => {
+            const existingItemIndex = cartItems.findIndex(c => c.id === itemId);
+            if (existingItemIndex > -1) {
+                const existingItem = cartItems[existingItemIndex];
+                existingItem.quantity -= 1;
+                if (existingItem.quantity <= 0) {
+                    cartItems.splice(existingItemIndex, 1);
+                }
+            }
+            window.updateCartDisplay();
+        };
+        
+        window.clearCart = () => {
+            cartItems = [];
+            window.updateCartDisplay();
+        };
+
+        window.updateCartDisplay = () => {
+            let total = 0;
+            cartItemsList.innerHTML = '';
+
+            if (cartItems.length === 0) {
+                cartItemsList.innerHTML = '<p id="cart-message" class="text-gray-400">Your cart is empty. Start adding items!</p>';
+                placeOrderBtn.disabled = true;
+                placeOrderBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            } else {
+                placeOrderBtn.disabled = false;
+                placeOrderBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+
+                cartItems.forEach(item => {
+                    const itemTotal = item.price * item.quantity;
+                    total += itemTotal;
+                    
+                    const cartItemEl = document.createElement('div');
+                    cartItemEl.className = 'flex justify-between items-center bg-gray-700 p-3 rounded-lg';
+                    cartItemEl.innerHTML = `
+                        <div class="flex-grow">
+                            <span class="text-white font-semibold">${item.name}</span>
+                            <span class="text-sm text-gray-400 block">₹${item.price.toFixed(2)} ea.</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <button onclick="window.removeFromCart('${item.id}')" class="text-red-400 hover:text-red-500 font-bold text-xl leading-none px-2">-</button>
+                            <span class="font-bold text-accent-gold w-5 text-center">${item.quantity}</span>
+                            <button onclick="window.addToCart('${item.id}')" class="text-status-new hover:text-green-500 font-bold text-xl leading-none px-2">+</button>
+                        </div>
+                    `;
+                    cartItemsList.appendChild(cartItemEl);
+                });
+            }
+            cartTotalSpan.textContent = `₹${total.toFixed(2)}`;
+            
+            // Update mobile cart button count
+            const itemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+            mobileCartCount.textContent = itemCount;
+            mobileCartBtn.classList.toggle('bg-red-500', itemCount === 0);
+            mobileCartBtn.classList.toggle('bg-accent-gold', itemCount > 0);
+        };
+
+        window.placeOrder = async () => {
+            if (cartItems.length === 0) return showModal("Order Error", "Your cart is empty. Add items before placing an order.");
+            const tableId = tableIdInput.value.trim();
+            if (!tableId) return showModal("Order Error", "Please enter your Table/User ID before placing the order.");
+
+            if (!db) return showModal("Database Error", "Cannot place order. Firebase is not initialized.");
+
+            const mobileNumber = document.getElementById('mobile-number').value.trim();
+            const total = parseFloat(cartTotalSpan.textContent.replace('₹', ''));
+            
+            const confirmationMessage = mobileNumber 
+                ? `Total: ₹${total.toFixed(2)}. Place order for Table/User: ${tableId}? SMS notifications will be enabled on ${mobileNumber}.`
+                : `Total: ₹${total.toFixed(2)}. Place order for Table/User: ${tableId}?`;
+
+            const isConfirmed = await showModal("Confirm Order", confirmationMessage, true);
+            if (!isConfirmed) return;
+
+            const orderData = {
+                tableId: tableId,
+                mobileNumber: mobileNumber, 
+                items: cartItems.map(item => ({
+                    id: item.id,
+                    name: item.name,
+                    quantity: item.quantity,
+                    price: item.price,
+                    total: item.price * item.quantity
+                })),
+                total: total,
+                status: 'New', 
+                paymentStatus: 'Pending', 
+                createdAt: serverTimestamp()
+            };
+            
+            let orderId = null;
+
+            try {
+                const orderRef = await addDoc(collection(db, ORDERS_COLLECTION_PATH), orderData);
+                orderId = orderRef.id;
+
+                window.clearCart(); 
+                tableIdInput.value = '';
+                document.getElementById('mobile-number').value = ''; 
+
+                // Close mobile cart overlay if it was open
+                cartSummary.classList.add('hidden');
+                document.body.classList.remove('overflow-hidden', 'lg:overflow-auto');
+
+
+                const paymentTitle = "Order Confirmed! Pay Now?";
+                const paymentMessage = `Your order for Table/User ${tableId} (Total: ₹${total.toFixed(2)}) has been sent to the kitchen. Please proceed to payment now or pay later.`;
+
+                modalTitle.textContent = paymentTitle;
+                modalMessage.textContent = paymentMessage;
+                modalOkBtn.textContent = 'Make Payment'; 
+                modalCancelBtn.textContent = 'Pay Later'; 
+                modalCancelBtn.classList.remove('hidden');
+                modalBackdrop.classList.remove('hidden');
+                modalBackdrop.classList.add('flex');
+                
+                const paymentPromise = new Promise((resolve) => {
+                    modalOkBtn.onclick = () => {
+                        modalBackdrop.classList.add('hidden');
+                        modalBackdrop.classList.remove('flex');
+                        resolve(true); 
+                    };
+                    modalCancelBtn.onclick = () => {
+                        modalBackdrop.classList.add('hidden');
+                        modalBackdrop.classList.remove('flex');
+                        resolve(false); 
+                    };
+                });
+
+                const shouldPay = await paymentPromise;
+
+                if (shouldPay && orderId) {
+                    await updateDoc(doc(db, ORDERS_COLLECTION_PATH, orderId), {
+                        paymentStatus: 'Completed',
+                        paymentDate: serverTimestamp()
+                    });
+
+                    await showModal("Payment Redirection", "Simulating secure payment...", false);
+                    showModal("Payment Successful!", `Thank you for your payment of ₹${total.toFixed(2)}. Your order is now being prepared.`);
+                } else {
+                    const finalMessage = mobileNumber 
+                        ? `Your order is placed. Total: ₹${total.toFixed(2)}. You can pay later. We will notify ${mobileNumber} when your food is ready.`
+                        : `Your order is placed. Total: ₹${total.toFixed(2)}. You can pay later.`;
+                    showModal("Payment Deferred", finalMessage);
+                }
+
+            } catch (error) {
+                console.error("Error placing order: ", error);
+                showModal("Order Error", "Failed to place order. Please try again.");
+            }
+        };
+
+        window.renderChefOrders = (orders) => {
+            chefContent.innerHTML = '';
+            
+            const sortedOrders = orders.sort((a, b) => {
+                const statusOrder = { 'New': 1, 'Preparing': 2, 'Ready': 3 };
+                
+                if (statusOrder[a.status] !== statusOrder[b.status]) {
+                    return statusOrder[a.status] - statusOrder[b.status];
+                }
+                
+                // Sort by creation time (oldest first)
+                const timeA = a.createdAt?.seconds || 0;
+                const timeB = b.createdAt?.seconds || 0;
+                return timeA - timeB;
+            });
+
+            chefOrdersEmpty.classList.toggle('hidden', orders.length > 0);
+
+            sortedOrders.forEach(order => {
+                let statusClass, nextStatus, nextBtnText, btnColor;
+
+                switch (order.status) {
+                    case 'New':
+                        statusClass = 'status-new';
+                        nextStatus = 'Preparing';
+                        nextBtnText = 'Start Preparing';
+                        btnColor = 'bg-status-new hover:bg-green-700';
+                        break;
+                    case 'Preparing':
+                        statusClass = 'status-progress';
+                        nextStatus = 'Ready'; 
+                        nextBtnText = 'Mark as Ready'; 
+                        btnColor = 'bg-status-progress hover:bg-blue-700';
+                        break;
+                    case 'Ready':
+                        statusClass = 'status-ready';
+                        nextStatus = 'Done'; 
+                        nextBtnText = 'Clear Order (Served)';
+                        btnColor = 'bg-red-600 hover:bg-red-700';
+                        break;
+                    default:
+                        statusClass = 'bg-gray-500 border-gray-500';
+                        nextStatus = 'Done';
+                        nextBtnText = 'Clear Order';
+                        btnColor = 'bg-gray-600 hover:bg-gray-700';
+                }
+
+                const orderTime = order.createdAt ? new Date(order.createdAt.seconds * 1000).toLocaleTimeString() : 'N/A';
+                
+                const orderEl = document.createElement('div');
+                orderEl.className = `p-5 rounded-xl shadow-lg border-t-8 border-current ${statusClass.replace('status-', 'border-')} bg-white flex flex-col justify-between`;
+                orderEl.innerHTML = `
+                    <div>
+                        <div class="flex justify-between items-start mb-4">
+                            <span class="text-3xl font-extrabold text-primary-dark">#${order.tableId}</span>
+                            <span class="text-sm font-medium text-gray-500">${orderTime}</span>
+                        </div>
+                        
+                        <div class="flex items-center justify-between mb-4">
+                            <!-- Order Status -->
+                            <span class="inline-block text-xl font-bold px-3 py-1 rounded-full text-white ${statusClass}">
+                                ${order.status}
+                            </span>
+                            
+                            <!-- Payment Status Indicator -->
+                            ${getPaymentIndicator(order.paymentStatus)}
+                        </div>
+                        
+                        <!-- Mobile Number if available -->
+                        ${order.mobileNumber ? `<p class="text-xs text-gray-600 mb-3">📞 Notify: ${order.mobileNumber}</p>` : ''}
+
+                        <ul class="space-y-2 border-t pt-4 border-gray-200">
+                            ${order.items.map(item => `
+                                <li class="flex justify-between text-base">
+                                    <span class="font-semibold text-primary-dark">${item.name}</span>
+                                    <span class="font-bold text-accent-gold">${item.quantity}x</span>
+                                </li>
+                            `).join('')}
+                        </ul>
+                    </div>
+                    
+                    <div class="mt-6 pt-4 border-t border-gray-200">
+                        <p class="text-xl font-bold text-gray-800 mb-2">Total: ₹${order.total.toFixed(2)}</p>
+                        <button 
+                            onclick="window.updateOrderStatus('${order.id}', '${nextStatus}')" 
+                            class="w-full text-white
+                            py-3 rounded-lg font-bold text-lg transition duration-150 shadow-md ${btnColor}">
+                            ${nextBtnText}
+                        </button>
+                    </div>
+                `;
+                chefContent.appendChild(orderEl);
+            });
+        };
+
+        window.updateOrderStatus = async (orderId, newStatus) => {
+            if (!db) return showModal("Database Error", "Cannot update status. Firebase is not initialized.");
+
+            try {
+                if (newStatus === 'Done') {
+                    // Only delete the order if it's marked as Done (Served)
+                    await deleteDoc(doc(db, ORDERS_COLLECTION_PATH, orderId));
+                } else {
+                    await updateDoc(doc(db, ORDERS_COLLECTION_PATH, orderId), {
+                        status: newStatus,
+                        updatedAt: serverTimestamp()
+                    });
+                }
+            } catch (error) {
+                console.error("Error updating order status: ", error);
+                showModal("Error Updating Status", `Failed to transition order to ${newStatus}. Please check console for network/permission issues.`);
+            }
+        };
+
+        // --- QR CODE GENERATION ---
+        
+        function generateQRCode(url) {
+            const container = document.getElementById('qrcode-container');
+            const qrLink = document.getElementById('qr-link');
+            qrLink.href = url;
+            
+            container.innerHTML = ''; 
+
+            if (typeof QRCode !== 'undefined') {
+                 new QRCode(container, {
+                    text: url,
+                    width: 200,
+                    height: 200,
+                    colorDark : "#1f2937", 
+                    colorLight : "#ffffff",
+                    correctLevel : QRCode.CorrectLevel.H
+                });
+            } else {
+                container.innerHTML = '<p class="text-red-500">QR Code library not loaded.</p>';
+            }
+        }
+
+        // --- INITIALIZATION ---
+        
+        window.onload = () => {
+            loadingIndicator.classList.remove('hidden');
+            setupFirebase();
+            
+            const dietaryFilterContainer = document.getElementById('customer-filters');
+            if (dietaryFilterContainer) {
+                dietaryFilterContainer.addEventListener('click', (e) => {
+                    const button = e.target.closest('.filter-btn');
+                    if (button && button.dataset.filter) {
+                        window.applyMenuFilters(button.dataset.filter, currentCategoryFilter);
+                    }
+                });
+            }
+
+            const categoryFilterContainer = document.getElementById('category-filters');
+            if (categoryFilterContainer) {
+                categoryFilterContainer.addEventListener('click', (e) => {
+                    const button = e.target.closest('.category-btn');
+                    if (button && button.dataset.filter) {
+                        window.applyMenuFilters(currentDietaryFilter, button.dataset.filter);
+                    }
+                });
+            }
+        };
+    </script>
+</body>
+</html>
+
