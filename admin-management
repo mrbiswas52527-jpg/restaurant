@@ -38,7 +38,6 @@ const initializeDOMReferences = () => {
     }
 }
 
-
 // --- PUBLIC FUNCTIONS ---
 
 /**
@@ -80,6 +79,7 @@ export function editItem(itemId) {
 
         // 2. Update the button text and style
         saveButton.textContent = 'Update Item';
+        // Combining styles from both sides for safety and retaining the hover:bg-gray-800 from HEAD
         saveButton.classList.remove('bg-primary-dark', 'hover:bg-gray-800');
         saveButton.classList.add('bg-blue-600', 'hover:bg-blue-700');
         
@@ -99,8 +99,7 @@ export async function updateItem(itemId, itemData) {
         // Add updatedAt timestamp to the update payload for tracking
         const updatePayload = { ...itemData, updatedAt: serverTimestamp() };
         
-        // setDoc with { merge: true } is safe for updating, but we're providing the full
-        // payload from the form, so a simple setDoc is fine too.
+        // Use setDoc with { merge: true } for a safe update.
         await setDoc(itemRef, updatePayload, { merge: true }); 
         console.log(`Item ${itemId} updated successfully.`);
         window.showModal('Success', `${itemData.name} was updated successfully.`);
@@ -225,13 +224,13 @@ function initializeAdminManagement() {
     initializeDOMReferences();
 
     // 2. Attach public functions to the window object so they can be called from HTML
+    // This combines the logic from the end of both branches
     window.saveMenuItem = handleAdminSubmit; // Use the combined handler for the form submit
     window.deleteMenuItem = deleteMenuItem;
     window.editMenuItem = editItem;
     window.resetAdminForm = resetAdminForm;
 
     // 3. Render the initial admin menu view (assuming this is where the list is shown)
-    // This call is crucial to display the menu items that can be edited/deleted.
     renderAdminView(); 
 }
 

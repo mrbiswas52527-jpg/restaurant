@@ -196,9 +196,15 @@
             <!-- Cart Summary (Sticky on the right for desktop, hidden overlay on mobile) -->
             <div class="lg:col-span-1">
                 <div id="cart-summary" class="bg-primary-dark p-6 rounded-xl shadow-2xl text-white
+<<<<<<< HEAD
                                                  lg:sticky lg:top-20 lg:h-fit lg:overflow-y-auto
                                                  fixed inset-0 lg:block z-40 hidden 
                                                  overflow-y-auto">
+=======
+                                            lg:sticky lg:top-20 lg:h-fit lg:overflow-y-auto
+                                            fixed inset-0 lg:block z-40 hidden 
+                                            overflow-y-auto">
+>>>>>>> 332eaf224709a40d0e04dc9867f7486ca89e697b
                     
                     <button id="close-mobile-cart" class="lg:hidden absolute top-4 right-4 text-white hover:text-accent-gold p-2">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
@@ -367,6 +373,7 @@
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut, RecaptchaVerifier, signInWithPhoneNumber } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, serverTimestamp, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
+<<<<<<< HEAD
         // --- HARDCODED FIREBASE CONFIGURATION ---
         const REAL_FIREBASE_CONFIG = {
             apiKey: "AIzaSyAvc_aw2C1lcH5-uCi0lC-m9eZthk5wn4k",
@@ -386,6 +393,25 @@
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
         // MANDATORY: Use __app_id for file paths if available, otherwise fallback to the projectId in the config.
         const appId = typeof __app_id !== 'undefined' ? __app_id : REAL_FIREBASE_CONFIG.projectId;
+=======
+        // --- GLOBAL VARIABLES & FIREBASE INITIALIZATION ---
+
+        // Use global environment variables provided by the Canvas environment
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+        let firebaseConfig;
+        try {
+            // Attempt to parse Canvas config
+            firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : 'null');
+            if (!firebaseConfig) throw new Error('Firebase Config Missing');
+        } catch (e) {
+            console.error("Firebase config is missing or invalid. Using mock configuration.", e);
+            // Minimal mock for local development outside the environment
+            firebaseConfig = { apiKey: "MOCK-API-KEY", authDomain: "mock.firebaseapp.com", projectId: appId, storageBucket: "mock.appspot.com", messagingSenderId: "MOCK", appId: "1:MOCK:web:MOCK", measurementId: "MOCK" };
+        }
+
+>>>>>>> 332eaf224709a40d0e04dc9867f7486ca89e697b
 
         let app, db, auth;
         let currentUserId = null;
@@ -411,7 +437,11 @@
         // Mock staff mapping (Full Phone Number -> Role)
         const STAFF_ROLES = {
             '+91123': 'admin', // Mock admin phone number (+91 prepended to 123)
+<<<<<<< HEAD
             '+91456': 'chef'  // Mock chef phone number (+91 prepended to 456)
+=======
+            '+91456': 'chef'  // Mock chef phone number (+91 prepended to 456)
+>>>>>>> 332eaf224709a40d0e04dc9867f7486ca89e697b
         };
         // Shared mock password for staff login (in production replace with secure auth)
         const SHARED_PASSWORD = typeof __shared_password !== 'undefined' ? __shared_password : 'restaurant123';
@@ -462,8 +492,13 @@
 
         function showModal(title, message, isConfirm = false) {
             return new Promise((resolve) => {
+<<<<<<< HEAD
                 modalOkBtn.textContent = 'OK';  
                 modalCancelBtn.textContent = 'Cancel';  
+=======
+                modalOkBtn.textContent = 'OK'; 
+                modalCancelBtn.textContent = 'Cancel'; 
+>>>>>>> 332eaf224709a40d0e04dc9867f7486ca89e697b
 
                 modalTitle.textContent = title;
                 modalMessage.textContent = message;
@@ -560,7 +595,11 @@
                 const nextView = targetView || (staffRole === 'admin' ? 'admin-view' : 'chef-view');
                 window.switchView(nextView);
             } else {
+<<<<<<< HEAD
                 showModal("Access Denied", "Your authenticated phone number is not registered to a staff role.");
+=======
+                 showModal("Access Denied", "Your authenticated phone number is not registered to a staff role.");
+>>>>>>> 332eaf224709a40d0e04dc9867f7486ca89e697b
             }
         }
 
@@ -591,6 +630,7 @@
         }
 
         async function setupFirebase() {
+<<<<<<< HEAD
             try {
                 // setLogLevel('debug'); // Uncomment for Firestore debugging
                 app = initializeApp(firebaseConfig);
@@ -637,6 +677,59 @@
             } catch (error) {
                 console.error("Firebase setup failed:", error);
                 showModal("Setup Error", `Could not initialize Firebase. Check console for details: ${error.message}.`);
+=======
+            if (!firebaseConfig.apiKey.includes("MOCK")) {
+                try {
+                    // setLogLevel('debug'); // Uncomment for Firestore debugging
+                    app = initializeApp(firebaseConfig);
+                    db = getFirestore(app);
+                    auth = getAuth(app);
+                    
+                    // Initialize Recaptcha Verifier
+                    appVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+                        'size': 'invisible', // Invisible reCAPTCHA
+                        'callback': (response) => {
+                            // reCAPTCHA solved
+                        },
+                        'expired-callback': () => {
+                            showModal("Verification Expired", "The reCAPTCHA token expired. Please try again.");
+                        }
+                    });
+
+                    onAuthStateChanged(auth, async (user) => {
+                        if (!user) {
+                            if (initialAuthToken) {
+                                await signInWithCustomToken(auth, initialAuthToken);
+                            } else {
+                                await signInAnonymously(auth);
+                            }
+                            return; // Wait for the next listener callback
+                        }
+                        
+                        currentUserId = user.uid;
+                        if (user.phoneNumber && STAFF_ROLES[user.phoneNumber]) {
+                            updateStaffAccess(user.phoneNumber);
+                        } else {
+                            authStatusDiv.textContent = `User ID: ${currentUserId.substring(0, 8)}...`;
+                        }
+                        
+                        initRealtimeListeners(); 
+                        generateQRCode(window.location.href.split('#')[0] + '#customer-view');
+                        loadingIndicator.classList.add('hidden');
+                        window.switchView('customer-view');
+                    });
+
+                } catch (error) {
+                    console.error("Firebase setup failed:", error);
+                    showModal("Setup Error", `Could not initialize Firebase. Check console for details: ${error.message}.`);
+                    loadingIndicator.classList.add('hidden');
+                    window.switchView('customer-view');
+                }
+            } else {
+                // Mock non-authenticated mode if Firebase config is unavailable
+                currentUserId = 'anonymous-' + crypto.randomUUID();
+                authStatusDiv.textContent = 'Not Logged In (Mock Mode)';
+>>>>>>> 332eaf224709a40d0e04dc9867f7486ca89e697b
                 loadingIndicator.classList.add('hidden');
                 window.switchView('customer-view');
             }
@@ -660,7 +753,11 @@
 
             if (isStaffView && !isAuthenticated) {
                 views['login-view'].classList.remove('hidden');
+<<<<<<< HEAD
                 document.getElementById('staff-controls').classList.add('hidden'); 
+=======
+                document.getElementById('staff-controls').classList.add('hidden'); 
+>>>>>>> 332eaf224709a40d0e04dc9867f7486ca89e697b
                 
                 const navBtnId = viewId === 'admin-view' ? 'nav-admin' : 'nav-chef';
                 const navBtn = document.getElementById(navBtnId);
@@ -832,14 +929,22 @@
         document.getElementById('logout-btn').onclick = async () => {
             if (auth) await signOut(auth);
             
+<<<<<<< HEAD
             resetOtpControls(true); 
+=======
+            resetOtpControls(true); 
+>>>>>>> 332eaf224709a40d0e04dc9867f7486ca89e697b
             isAuthenticated = false;
             staffRole = null;
             document.getElementById('staff-controls').classList.add('hidden');
             document.getElementById('nav-admin').dataset.view = 'login-view';
             document.getElementById('nav-chef').dataset.view = 'login-view';
             showModal("Logged Out", "You have been successfully logged out from the staff console.");
+<<<<<<< HEAD
             window.switchView('customer-view');  
+=======
+            window.switchView('customer-view'); 
+>>>>>>> 332eaf224709a40d0e04dc9867f7486ca89e697b
         };
         
         document.getElementById('staff-controls').addEventListener('click', (e) => {
@@ -894,7 +999,11 @@
         window.applyMenuFilters = (dietaryFilter, categoryFilter) => {
             currentDietaryFilter = dietaryFilter;
             currentCategoryFilter = categoryFilter;
+<<<<<<< HEAD
             window.renderCustomerMenu(menuItems); 
+=======
+            window.renderCustomerMenu(menuItems); 
+>>>>>>> 332eaf224709a40d0e04dc9867f7486ca89e697b
 
             // Update Dietary filter buttons UI
             document.querySelectorAll('#customer-filters .filter-btn').forEach(btn => {
@@ -907,7 +1016,11 @@
                         btn.classList.add('filter-veg', 'text-green-700', 'hover:bg-green-200');
                     } else if (btn.dataset.filter === 'non-veg') {
                         btn.classList.add('filter-non-veg', 'text-red-700', 'hover:bg-red-200');
+<<<<<<< HEAD
                     } else { 
+=======
+                    } else { 
+>>>>>>> 332eaf224709a40d0e04dc9867f7486ca89e697b
                         btn.classList.add('filter-all', 'text-gray-700', 'hover:bg-gray-200');
                     }
                 }
@@ -963,8 +1076,13 @@
         window.resetAdminForm = () => {
             document.getElementById('admin-form').reset();
             document.getElementById('admin-item-id').value = '';
+<<<<<<< HEAD
             document.getElementById('admin-item-image-url').value = ''; 
             document.getElementById('admin-item-dietary').value = 'veg'; 
+=======
+            document.getElementById('admin-item-image-url').value = ''; 
+            document.getElementById('admin-item-dietary').value = 'veg'; 
+>>>>>>> 332eaf224709a40d0e04dc9867f7486ca89e697b
             document.getElementById('admin-form-title').textContent = 'Add New Item';
             document.getElementById('admin-save-btn').textContent = 'Save Item';
         };
@@ -977,8 +1095,13 @@
                 document.getElementById('admin-item-description').value = item.description;
                 document.getElementById('admin-item-price').value = item.price;
                 document.getElementById('admin-item-category').value = item.category;
+<<<<<<< HEAD
                 document.getElementById('admin-item-image-url').value = item.imageUrl || ''; 
                 document.getElementById('admin-item-dietary').value = item.dietaryStatus || 'veg'; 
+=======
+                document.getElementById('admin-item-image-url').value = item.imageUrl || ''; 
+                document.getElementById('admin-item-dietary').value = item.dietaryStatus || 'veg'; 
+>>>>>>> 332eaf224709a40d0e04dc9867f7486ca89e697b
 
                 document.getElementById('admin-form-title').textContent = `Editing: ${item.name}`;
                 document.getElementById('admin-save-btn').textContent = 'Update Item';
@@ -1016,8 +1139,13 @@
                 description: document.getElementById('admin-item-description').value,
                 price: parseFloat(document.getElementById('admin-item-price').value),
                 category: document.getElementById('admin-item-category').value,
+<<<<<<< HEAD
                 imageUrl: document.getElementById('admin-item-image-url').value, 
                 dietaryStatus: document.getElementById('admin-item-dietary').value, 
+=======
+                imageUrl: document.getElementById('admin-item-image-url').value, 
+                dietaryStatus: document.getElementById('admin-item-dietary').value, 
+>>>>>>> 332eaf224709a40d0e04dc9867f7486ca89e697b
                 updatedAt: serverTimestamp()
             };
 
@@ -1069,14 +1197,22 @@
                             return `
                                 <!-- START: Updated Card Structure for aesthetics and images -->
                                 <div class="menu-card bg-white rounded-xl shadow-lg overflow-hidden flex flex-col md:flex-row transition duration-300 transform">
+<<<<<<< HEAD
                                     <img src="${imageSrc}" 
+=======
+                                    <img src="${imageSrc}" 
+>>>>>>> 332eaf224709a40d0e04dc9867f7486ca89e697b
                                         onerror="this.onerror=null;this.src='${defaultImageUrl}'"
                                         class="w-full md:w-48 h-36 md:h-auto object-cover" loading="lazy" alt="${item.name}">
                                     <div class="p-4 md:p-5 flex-grow flex flex-col justify-between">
                                         <!-- Content block -->
                                         <div class="flex justify-between items-start mb-2">
                                             <p class="text-xl font-bold text-primary-dark flex items-center">
+<<<<<<< HEAD
                                                 ${getDietaryIndicator(item.dietaryStatus)} 
+=======
+                                                ${getDietaryIndicator(item.dietaryStatus)} 
+>>>>>>> 332eaf224709a40d0e04dc9867f7486ca89e697b
                                                 <span>${item.name}</span>
                                             </p>
                                             <span class="text-2xl font-extrabold text-accent-gold">₹${item.price.toFixed(2)}</span>
@@ -1183,7 +1319,11 @@
             const mobileNumber = document.getElementById('mobile-number').value.trim();
             const total = parseFloat(cartTotalSpan.textContent.replace('₹', ''));
             
+<<<<<<< HEAD
             const confirmationMessage = mobileNumber 
+=======
+            const confirmationMessage = mobileNumber 
+>>>>>>> 332eaf224709a40d0e04dc9867f7486ca89e697b
                 ? `Total: ₹${total.toFixed(2)}. Place order for Table/User: ${tableId}? SMS notifications will be enabled on ${mobileNumber}.`
                 : `Total: ₹${total.toFixed(2)}. Place order for Table/User: ${tableId}?`;
 
@@ -1192,7 +1332,11 @@
 
             const orderData = {
                 tableId: tableId,
+<<<<<<< HEAD
                 mobileNumber: mobileNumber, 
+=======
+                mobileNumber: mobileNumber, 
+>>>>>>> 332eaf224709a40d0e04dc9867f7486ca89e697b
                 items: cartItems.map(item => ({
                     id: item.id,
                     name: item.name,
@@ -1201,8 +1345,13 @@
                     total: item.price * item.quantity
                 })),
                 total: total,
+<<<<<<< HEAD
                 status: 'New', 
                 paymentStatus: 'Pending', 
+=======
+                status: 'New', 
+                paymentStatus: 'Pending', 
+>>>>>>> 332eaf224709a40d0e04dc9867f7486ca89e697b
                 createdAt: serverTimestamp()
             };
             
@@ -1212,9 +1361,15 @@
                 const orderRef = await addDoc(collection(db, ORDERS_COLLECTION_PATH), orderData);
                 orderId = orderRef.id;
 
+<<<<<<< HEAD
                 window.clearCart(); 
                 tableIdInput.value = '';
                 document.getElementById('mobile-number').value = ''; 
+=======
+                window.clearCart(); 
+                tableIdInput.value = '';
+                document.getElementById('mobile-number').value = ''; 
+>>>>>>> 332eaf224709a40d0e04dc9867f7486ca89e697b
 
                 // Close mobile cart overlay if it was open
                 cartSummary.classList.add('hidden');
@@ -1226,8 +1381,13 @@
 
                 modalTitle.textContent = paymentTitle;
                 modalMessage.textContent = paymentMessage;
+<<<<<<< HEAD
                 modalOkBtn.textContent = 'Make Payment'; 
                 modalCancelBtn.textContent = 'Pay Later'; 
+=======
+                modalOkBtn.textContent = 'Make Payment'; 
+                modalCancelBtn.textContent = 'Pay Later'; 
+>>>>>>> 332eaf224709a40d0e04dc9867f7486ca89e697b
                 modalCancelBtn.classList.remove('hidden');
                 modalBackdrop.classList.remove('hidden');
                 modalBackdrop.classList.add('flex');
@@ -1236,12 +1396,20 @@
                     modalOkBtn.onclick = () => {
                         modalBackdrop.classList.add('hidden');
                         modalBackdrop.classList.remove('flex');
+<<<<<<< HEAD
                         resolve(true); 
+=======
+                        resolve(true); 
+>>>>>>> 332eaf224709a40d0e04dc9867f7486ca89e697b
                     };
                     modalCancelBtn.onclick = () => {
                         modalBackdrop.classList.add('hidden');
                         modalBackdrop.classList.remove('flex');
+<<<<<<< HEAD
                         resolve(false); 
+=======
+                        resolve(false); 
+>>>>>>> 332eaf224709a40d0e04dc9867f7486ca89e697b
                     };
                 });
 
@@ -1256,7 +1424,11 @@
                     await showModal("Payment Redirection", "Simulating secure payment...", false);
                     showModal("Payment Successful!", `Thank you for your payment of ₹${total.toFixed(2)}. Your order is now being prepared.`);
                 } else {
+<<<<<<< HEAD
                     const finalMessage = mobileNumber 
+=======
+                    const finalMessage = mobileNumber 
+>>>>>>> 332eaf224709a40d0e04dc9867f7486ca89e697b
                         ? `Your order is placed. Total: ₹${total.toFixed(2)}. You can pay later. We will notify ${mobileNumber} when your food is ready.`
                         : `Your order is placed. Total: ₹${total.toFixed(2)}. You can pay later.`;
                     showModal("Payment Deferred", finalMessage);
@@ -1298,13 +1470,22 @@
                         break;
                     case 'Preparing':
                         statusClass = 'status-progress';
+<<<<<<< HEAD
                         nextStatus = 'Ready'; 
                         nextBtnText = 'Mark as Ready'; 
+=======
+                        nextStatus = 'Ready'; 
+                        nextBtnText = 'Mark as Ready'; 
+>>>>>>> 332eaf224709a40d0e04dc9867f7486ca89e697b
                         btnColor = 'bg-status-progress hover:bg-blue-700';
                         break;
                     case 'Ready':
                         statusClass = 'status-ready';
+<<<<<<< HEAD
                         nextStatus = 'Done'; 
+=======
+                        nextStatus = 'Done'; 
+>>>>>>> 332eaf224709a40d0e04dc9867f7486ca89e697b
                         nextBtnText = 'Clear Order (Served)';
                         btnColor = 'bg-red-600 hover:bg-red-700';
                         break;
@@ -1351,10 +1532,17 @@
                     
                     <div class="mt-6 pt-4 border-t border-gray-200">
                         <p class="text-xl font-bold text-gray-800 mb-2">Total: ₹${order.total.toFixed(2)}</p>
+<<<<<<< HEAD
                         <button 
                             onclick="window.updateOrderStatus('${order.id}', '${nextStatus}')" 
                             class="w-full text-white
                             py-3 rounded-lg font-bold text-lg transition duration-150 shadow-md ${btnColor}">
+=======
+                        <button 
+                            onclick="window.updateOrderStatus('${order.id}', '${nextStatus}')" 
+                            class="w-full text-white
+                          py-3 rounded-lg font-bold text-lg transition duration-150 shadow-md ${btnColor}">
+>>>>>>> 332eaf224709a40d0e04dc9867f7486ca89e697b
                             ${nextBtnText}
                         </button>
                     </div>
@@ -1389,14 +1577,22 @@
             const qrLink = document.getElementById('qr-link');
             qrLink.href = url;
             
+<<<<<<< HEAD
             container.innerHTML = ''; 
+=======
+            container.innerHTML = ''; 
+>>>>>>> 332eaf224709a40d0e04dc9867f7486ca89e697b
 
             if (typeof QRCode !== 'undefined') {
                  new QRCode(container, {
                     text: url,
                     width: 200,
                     height: 200,
+<<<<<<< HEAD
                     colorDark : "#1f2937", 
+=======
+                    colorDark : "#1f2937", 
+>>>>>>> 332eaf224709a40d0e04dc9867f7486ca89e697b
                     colorLight : "#ffffff",
                     correctLevel : QRCode.CorrectLevel.H
                 });
