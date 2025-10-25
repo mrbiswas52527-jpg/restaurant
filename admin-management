@@ -1,42 +1,66 @@
 import { db, appId } from './firebase-setup.js';
-import { collection, addDoc, doc, setDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { collection, addDoc, doc, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { menuItems } from './state-management.js';
 import { renderAdminView } from './ui-updates.js';
 
 // Define the name of the public collection for menu items
-const MENU_COLLECTION_NAME = 'menuItems'; // Updated to match path in state-management.js
+const MENU_COLLECTION_NAME = 'menu_items';
 
 /**
  * Gets the Firestore collection reference for menu items.
  * @returns {object} The Firestore Collection Reference.
  */
 const getMenuCollection = () => {
-    // Path: /artifacts/{appId}/public/data/menuItems
+    // Path: /artifacts/{appId}/public/data/menu_items
     return collection(db, `artifacts/${appId}/public/data/${MENU_COLLECTION_NAME}`);
 }
 
-// --- Form Element References (Matching IDs from restaurant_app.html) ---
-// These are defined in a function and initialized on load
-let adminForm, itemIdInput, itemNameInput, itemDescInput, itemPriceInput, itemCategoryInput, itemImageUrlInput, itemDietaryInput, saveButton;
+// --- Form Element References ---
+const adminForm = document.getElementById('menu-item-form');
+const itemNameInput = document.getElementById('admin-name');
+const itemDescInput = document.getElementById('admin-description');
+const itemPriceInput = document.getElementById('admin-price');
+const itemCategoryInput = document.getElementById('admin-category');
+const saveButton = document.getElementById('admin-form-submit-btn');
+
+// State to track the currently edited document ID
+let editingItemId = null;
+
+// --- EVENT LISTENERS ---
 
 /**
- * Initializes DOM element references.
+ * Handles the submit event for both saving a new item and updating an existing one.
+ * @param {Event} e The submit event.
  */
-const initializeDOMReferences = () => {
-    adminForm = document.getElementById('admin-form');
-    itemIdInput = document.getElementById('admin-item-id'); // Hidden input for item ID
-    itemNameInput = document.getElementById('admin-item-name');
-    itemDescInput = document.getElementById('admin-item-description');
-    itemPriceInput = document.getElementById('admin-item-price');
-    itemCategoryInput = document.getElementById('admin-item-category');
-    itemImageUrlInput = document.getElementById('admin-item-image-url'); // NEW FIELD
-    itemDietaryInput = document.getElementById('admin-item-dietary'); // NEW FIELD
-    saveButton = document.getElementById('admin-save-btn');
+adminForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = itemNameInput.value.trim();
+    const description = itemDescInput.value.trim();
+    const price = parseFloat(itemPriceInput.value);
+    const category = itemCategoryInput.value;
 
-    if (!adminForm || !saveButton) {
-        console.error("Critical admin form elements not found. Admin functionality disabled.");
+    if (!name || isNaN(price) || price <= 0) {
+        alert('Please enter a valid name and price.');
+        return;
     }
-}
+
+    const itemData = {
+        name: name,
+        description: description,
+        price: price,
+        category: category,
+        createdAt: new Date().toISOString()
+    };
+
+    if (editingItemId) {
+        // If we are editing, update the item
+        await updateItem(editingItemId, itemData);
+    } else {
+        // Otherwise, save a new item
+        await saveNewItem(itemData);
+    }
+});
+
 
 // --- PUBLIC FUNCTIONS ---
 
@@ -46,14 +70,13 @@ const initializeDOMReferences = () => {
  */
 export async function saveNewItem(itemData) {
     try {
-        const finalItemData = { ...itemData, createdAt: serverTimestamp() }; // Use serverTimestamp for creation
-        await addDoc(getMenuCollection(), finalItemData);
+        // Add a new document with an auto-generated ID
+        await addDoc(getMenuCollection(), itemData);
         console.log("New item saved successfully.");
-        window.showModal('Success', `${itemData.name} was successfully added to the menu.`);
-        window.resetAdminForm();
+        // Clear the form after saving
+        resetAdminForm();
     } catch (e) {
         console.error("Error adding document: ", e);
-        window.showModal('Error', 'Failed to add item. Please try again.');
     }
 }
 
@@ -62,29 +85,24 @@ export async function saveNewItem(itemData) {
  * @param {string} itemId The ID of the document to edit.
  */
 export function editItem(itemId) {
-    if (!itemIdInput) return; // Check if DOM elements are initialized
     // Find the item in the current local state
     const itemToEdit = menuItems.find(item => item.id === itemId);
     if (itemToEdit) {
         // 1. Load data into the form fields
-        itemIdInput.value = itemToEdit.id; // Set the ID for tracking
         itemNameInput.value = itemToEdit.name;
         itemDescInput.value = itemToEdit.description;
         itemPriceInput.value = itemToEdit.price;
         itemCategoryInput.value = itemToEdit.category;
-        
-        // Load NEW fields
-        itemImageUrlInput.value = itemToEdit.imageUrl || '';
-        itemDietaryInput.value = itemToEdit.dietaryStatus || 'veg';
 
-        // 2. Update the button text and style
+        // 2. Set the state to 'editing' mode
+        editingItemId = itemId;
+        // 3. Update the button text to 'Update Item'
         saveButton.textContent = 'Update Item';
-        // Combining styles from both sides for safety and retaining the hover:bg-gray-800 from HEAD
-        saveButton.classList.remove('bg-primary-dark', 'hover:bg-gray-800');
-        saveButton.classList.add('bg-blue-600', 'hover:bg-blue-700');
+        saveButton.classList.remove('bg-gray-800');
+        saveButton.classList.add('bg-blue-600');
         
         // Update form title
-        document.getElementById('admin-form-title').textContent = `Edit Item: ${itemToEdit.name}`;
+        document.getElementById('admin-form-title').textContent = 'Edit Item';
     }
 }
 
@@ -96,17 +114,11 @@ export function editItem(itemId) {
 export async function updateItem(itemId, itemData) {
     try {
         const itemRef = doc(db, getMenuCollection().path, itemId);
-        // Add updatedAt timestamp to the update payload for tracking
-        const updatePayload = { ...itemData, updatedAt: serverTimestamp() };
-        
-        // Use setDoc with { merge: true } for a safe update.
-        await setDoc(itemRef, updatePayload, { merge: true }); 
+        await setDoc(itemRef, itemData); // setDoc overwrites, which is fine for full update
         console.log(`Item ${itemId} updated successfully.`);
-        window.showModal('Success', `${itemData.name} was updated successfully.`);
-        window.resetAdminForm();
+        resetAdminForm();
     } catch (e) {
         console.error("Error updating document: ", e);
-        window.showModal('Error', 'Failed to update item. Please try again.');
     }
 }
 
@@ -115,24 +127,13 @@ export async function updateItem(itemId, itemData) {
  * @param {string} itemId The ID of the document to delete.
  */
 export async function deleteMenuItem(itemId) {
-    if (!db) return window.showModal("Database Error", "Cannot connect to database. Firebase not initialized.");
-    
-    const item = menuItems.find(i => i.id === itemId);
-    const isConfirmed = await window.showModal(
-        "Confirm Deletion", 
-        `Are you sure you want to permanently delete '${item ? item.name : 'this item'}'? This action is permanent.`, 
-        true
-    );
-    
-    if (isConfirmed) {
+    if (confirm("Are you sure you want to delete this menu item? This action is permanent.")) {
         try {
             const itemRef = doc(db, getMenuCollection().path, itemId);
             await deleteDoc(itemRef);
             console.log(`Item ${itemId} deleted successfully.`);
-            window.showModal('Success', `${item ? item.name : 'Item'} deleted successfully.`);
         } catch (e) {
             console.error("Error deleting document: ", e);
-            window.showModal('Error', 'Failed to delete item. Please try again.');
         }
     }
 }
@@ -141,98 +142,20 @@ export async function deleteMenuItem(itemId) {
  * Resets the form and returns it to 'save new item' mode.
  */
 export function resetAdminForm() {
-    if (!adminForm || !itemIdInput || !saveButton) return;
-    
     adminForm.reset();
-    itemIdInput.value = ''; // Clear hidden ID input
-    
+    editingItemId = null;
     // Restore the button text and style
     saveButton.textContent = 'Save Item';
-    saveButton.classList.remove('bg-blue-600', 'hover:bg-blue-700');
-    saveButton.classList.add('bg-primary-dark', 'hover:bg-gray-800');
+    saveButton.classList.remove('bg-blue-600');
+    saveButton.classList.add('bg-gray-800');
     
     // Restore form title
     document.getElementById('admin-form-title').textContent = 'Add New Item';
 }
 
-/**
- * Handles the form submission event by validating and routing to save/update functions.
- * Exposed to window via event handler in HTML.
- */
-export async function handleAdminSubmit(e) {
-    e.preventDefault();
-
-    // CRITICAL: Check for database initialization before proceeding
-    if (!db) {
-        window.showModal("Error", "Authentication service not initialized. Please wait for the application to finish loading.");
-        return;
-    }
-    
-    // Check if DOM elements are initialized
-    if (!itemNameInput) {
-        window.showModal("Error", "Admin form elements failed to load.");
-        return;
-    }
-
-    const name = itemNameInput.value.trim();
-    const price = parseFloat(itemPriceInput.value);
-    const category = itemCategoryInput.value;
-
-    if (!name || isNaN(price) || price <= 0 || !category) {
-        window.showModal('Input Error', 'Please enter a valid name, price greater than zero, and select a category.');
-        return;
-    }
-    
-    // Temporarily disable the button to prevent double-submit
-    const originalText = saveButton.textContent;
-    saveButton.textContent = 'Processing...';
-    saveButton.disabled = true;
-
-    // Prepare base item data including new fields
-    const itemData = {
-        name: name,
-        description: itemDescInput.value.trim(),
-        price: price,
-        category: category,
-        imageUrl: itemImageUrlInput.value.trim(),
-        dietaryStatus: itemDietaryInput.value,
-    };
-
-    const currentItemId = itemIdInput.value;
-
-    try {
-        if (currentItemId) {
-            await updateItem(currentItemId, itemData);
-        } else {
-            await saveNewItem(itemData);
-        }
-    } finally {
-        // Re-enable the button regardless of success/failure
-        saveButton.textContent = originalText;
-        saveButton.disabled = false;
-    }
-}
-
-
-// --- INITIALIZATION ---
-
-/**
- * Main function to initialize all admin management features.
- */
-function initializeAdminManagement() {
-    // 1. Initialize DOM references
-    initializeDOMReferences();
-
-    // 2. Attach public functions to the window object so they can be called from HTML
-    // This combines the logic from the end of both branches
-    window.saveMenuItem = handleAdminSubmit; // Use the combined handler for the form submit
-    window.deleteMenuItem = deleteMenuItem;
-    window.editMenuItem = editItem;
-    window.resetAdminForm = resetAdminForm;
-
-    // 3. Render the initial admin menu view (assuming this is where the list is shown)
-    renderAdminView(); 
-}
-
-// Call the initialization function when the script loads
-initializeAdminManagement();
+// Attach public functions to the window object so they can be called from dynamically
+// created HTML elements in ui-updates.js
+window.saveMenuItem = saveNewItem;
+window.deleteMenuItem = deleteMenuItem;
+window.editItem = editItem;
+window.resetAdminForm = resetAdminForm;
