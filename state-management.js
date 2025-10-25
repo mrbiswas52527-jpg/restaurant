@@ -31,8 +31,8 @@ export function setupRealtimeListeners(db, appId) {
  * @param {string} appId The unique application ID.
  */
 function setupMenuListener(db, appId) {
-    // Path: /artifacts/{appId}/public/data/menuItems (Using 'menuItems' path convention from main HTML)
-    const menuCollectionRef = collection(db, `artifacts/${appId}/public/data/menuItems`);
+    // Path: /artifacts/{appId}/public/data/menu_items
+    const menuCollectionRef = collection(db, `artifacts/${appId}/public/data/menu_items`);
 
     onSnapshot(menuCollectionRef, (snapshot) => {
         menuItems = snapshot.docs.map(doc => ({
@@ -52,7 +52,7 @@ function setupMenuListener(db, appId) {
 
 /**
  * Sets up the real-time listener for the orders collection.
- * It fetches orders in 'New', 'Preparing', and 'Ready' states for the KDS view.
+ * It filters for only 'New' and 'In Progress' orders (KDS view).
  * @param {object} db The Firestore database instance.
  * @param {string} appId The unique application ID.
  */
@@ -60,16 +60,17 @@ function setupOrdersListener(db, appId) {
     // Path: /artifacts/{appId}/public/data/orders
     const ordersCollectionRef = collection(db, `artifacts/${appId}/public/data/orders`);
 
-    // UPDATED: Using 'Preparing' instead of 'In Progress' to match front-end logic.
+    // Create a query to only fetch orders that are 'New' or 'In Progress'
+    // This is the Kitchen Display System (KDS) view
     const q = query(
         ordersCollectionRef, 
-        where('status', 'in', ['New', 'Preparing', 'Ready'])
+        where('status', 'in', ['New', 'In Progress', 'Ready'])
     );
 
     onSnapshot(q, (snapshot) => {
-        // Removed displayId calculation from state layer as it's purely a view concern
-        orders = snapshot.docs.map((doc) => ({
+        orders = snapshot.docs.map((doc, index) => ({
             id: doc.id,
+            displayId: index + 1, // Simple sequential ID for the chef's view (not permanent)
             ...doc.data()
         }));
         
@@ -81,4 +82,3 @@ function setupOrdersListener(db, appId) {
         console.error("Error setting up orders listener:", error);
     });
 }
-
