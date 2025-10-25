@@ -28,7 +28,7 @@
         .status-progress { background-color: var(--status-progress); border-color: var(--status-progress); }
         .status-ready { background-color: var(--status-ready); border-color: var(--status-ready); }
         
-        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; } /* Adjusted bg color for softer look */
+        body { font-family: 'Inter', sans-serif; background-color: #f9fafb; }
         .scroll-hidden::-webkit-scrollbar { display: none; }
         .scroll-hidden { -ms-overflow-style: none; scrollbar-width: none; }
         /* Style for the QR code container */
@@ -40,9 +40,6 @@
             box-shadow: 0 0 0 1px var(--accent-gold);
         }
         /* Custom decoration for Menu Cards in Customer View */
-        .menu-card {
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
         .menu-card:hover {
             transform: scale(1.01);
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
@@ -51,34 +48,18 @@
         .filter-veg { background-color: #d1fae5; color: #059669; } /* Green-100, Green-600 */
         .filter-non-veg { background-color: #fee2e2; color: #ef4444; } /* Red-100, Red-500 */
         .filter-all { background-color: #f3f4f6; color: #4b5563; } /* Gray-100, Gray-600 */
-        
-        /* Mobile Cart Overlay Styling */
-        #cart-summary {
-            transition: transform 0.3s ease;
-        }
-        /* Style to make mobile cart cover entire viewport when active */
-        @media (max-width: 1023px) {
-            #cart-summary:not(.hidden) {
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                border-radius: 0;
-                max-height: 100vh;
-            }
-        }
     </style>
 </head>
 <body class="min-h-screen">
 
     <!-- Global Message Modal (replaces alert/confirm) -->
-    <div id="modal-backdrop" class="fixed inset-0 bg-black bg-opacity-70 z-50 hidden items-center justify-center">
-        <div class="bg-white p-6 rounded-xl shadow-2xl max-w-sm w-full animate-in zoom-in duration-300">
+    <div id="modal-backdrop" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center">
+        <div class="bg-white p-6 rounded-xl shadow-2xl max-w-sm w-full">
             <h3 id="modal-title" class="text-xl font-bold mb-4 text-primary-dark"></h3>
             <p id="modal-message" class="mb-6 text-gray-700"></p>
             <div class="flex justify-end space-x-3">
                 <button id="modal-cancel-btn" class="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 hidden transition" autofocus>Cancel</button>
-                <button id="modal-ok-btn" class="px-4 py-2 bg-accent-gold text-black rounded-lg font-semibold hover:bg-amber-600 transition">OK</button>
+                <button id="modal-ok-btn" class="px-4 py-2 bg-accent-gold text-white rounded-lg hover:bg-amber-600 transition">OK</button>
             </div>
         </div>
     </div>
@@ -86,14 +67,14 @@
     <!-- Main Header Navigation -->
     <header id="app-header" class="bg-primary-dark shadow-lg sticky top-0 z-40">
         <div class="container mx-auto px-4 py-3 flex justify-between items-center">
-            <h1 class="text-2xl font-extrabold text-white">"Good food, good mood."</h1>
-            <nav id="nav-tabs" class="flex space-x-2 sm:space-x-4">
-                <button id="nav-customer" data-view="customer-view" class="py-2 px-3 sm:px-4 rounded-lg font-semibold bg-accent-gold text-white hover:bg-amber-600 transition duration-150 text-sm sm:text-base">Customer Menu</button>
-                <button id="nav-admin" data-view="login-view" class="py-2 px-3 sm:px-4 rounded-lg font-semibold text-gray-300 hover:text-white transition duration-150 text-sm sm:text-base">Admin</button>
-                <button id="nav-chef" data-view="login-view" class="py-2 px-3 sm:px-4 rounded-lg font-semibold text-gray-300 hover:text-white transition duration-150 text-sm sm:text-base">Chef KDS</button>
-                <button id="nav-qr" data-view="qr-view" class="py-2 px-3 sm:px-4 rounded-lg font-semibold text-gray-300 hover:text-white transition duration-150 text-sm sm:text-base">QR Menu</button>
+            <h1 class="text-2xl font-extrabold text-white">Food Service App</h1>
+            <nav id="nav-tabs" class="flex space-x-4">
+                <button id="nav-customer" data-view="customer-view" class="py-2 px-4 rounded-lg font-semibold bg-accent-gold text-white hover:bg-amber-600 transition duration-150">Customer Menu</button>
+                <button id="nav-admin" data-view="login-view" class="py-2 px-4 rounded-lg font-semibold text-gray-300 hover:text-white transition duration-150">Admin Menu</button>
+                <button id="nav-chef" data-view="login-view" class="py-2 px-4 rounded-lg font-semibold text-gray-300 hover:text-white transition duration-150">Chef KDS</button>
+                <button id="nav-qr" data-view="qr-view" class="py-2 px-4 rounded-lg font-semibold text-gray-300 hover:text-white transition duration-150">QR Code</button>
             </nav>
-            <div id="auth-status" class="text-xs text-gray-400 hidden sm:block">Not Logged In</div>
+            <div id="auth-status" class="text-sm text-gray-400">Not Logged In</div>
         </div>
     </header>
 
@@ -105,48 +86,23 @@
             <p class="mt-4">Loading application...</p>
         </div>
 
-        <!-- 1. LOGIN VIEW (OTP with Firebase Phone Auth) -->
+        <!-- 1. LOGIN VIEW -->
         <div id="login-view" class="flex justify-center items-start pt-10 md:pt-20 h-full hidden">
             <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md">
-                <h2 class="text-3xl text-primary-dark font-bold mb-6 text-center">Staff Login (Phone/OTP)</h2>
-                <p class="text-sm text-center text-gray-500 mb-6">
-                    Enter your registered phone number. (Mocks: **123** for Admin, **456** for Chef)
-                </p>
+                <h2 class="text-3xl text-primary-dark font-bold mb-6 text-center">Admin / Chef Login</h2>
+                <p class="text-sm text-center text-gray-500 mb-6">Use Phone: **123** and Password: **admin** or Phone: **456** and Password: **chef**</p>
                 <form id="login-form">
                     <div class="mb-4">
-                        <label for="login-phone" class="block text-sm font-medium text-gray-700 mb-1">Phone Number (Starts with +91)</label>
-                        <div class="flex">
-                            <!-- Pre-filled Country Code -->
-                            <span class="inline-flex items-center px-3 text-gray-500 bg-gray-100 border border-r-0 border-gray-300 rounded-l-lg text-lg font-semibold">
-                                +91
-                            </span>
-                            <input type="tel" id="login-phone" required class="mt-1 block w-full rounded-r-lg border-gray-300 shadow-sm p-3 border" placeholder="Enter 10 digit number (e.g., 9876543210)">
-                        </div>
+                        <label for="login-phone" class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                        <input type="tel" id="login-phone" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border" placeholder="e.g., 123">
                     </div>
-                    <!-- Shared Password Login -->
-                    <div class="mb-4">
-                        <label for="login-password" class="block text-sm font-medium text-gray-700 mb-1">Staff Password (optional)</label>
-                        <input type="password" id="login-password" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border" placeholder="Enter shared staff password to login">
-                        <p class="text-xs text-gray-400 mt-2">Enter password to sign in as staff (bypasses OTP). Leave empty to use OTP.</p>
+                    <div class="mb-6">
+                        <label for="login-password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                        <input type="password" id="login-password" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border" placeholder="Enter password">
                     </div>
-                    
-                    <div id="otp-controls-container">
-                        <!-- Recaptcha will be invisibly attached to this button -->
-                        <button type="button" id="send-otp-btn" class="w-full bg-blue-600 text-white py-3 rounded-lg font-bold text-lg hover:bg-blue-700 transition duration-150 shadow-lg mb-4">
-                            Send OTP
-                        </button>
-                        
-                        <div id="otp-verification-section" class="hidden">
-                            <div class="mb-6">
-                                <label for="login-otp" class="block text-sm font-medium text-gray-700 mb-1">One-Time Password (OTP)</label>
-                                <input type="number" id="login-otp" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border" placeholder="Enter 6-digit OTP" disabled>
-                                <p id="otp-timer" class="text-sm text-red-500 mt-2 hidden">OTP timer starts after successful request.</p>
-                            </div>
-                            <button type="submit" id="verify-otp-btn" class="w-full bg-primary-dark text-white py-3 rounded-lg font-bold text-lg hover:bg-gray-800 transition duration-150 shadow-lg" disabled>
-                                Verify & Log In
-                            </button>
-                        </div>
-                    </div>
+                    <button type="submit" class="w-full bg-primary-dark text-white py-3 rounded-lg font-bold text-lg hover:bg-gray-800 transition duration-150 shadow-lg">
+                        Log In
+                    </button>
                 </form>
                 <p id="login-error" class="text-red-500 text-center mt-4 hidden"></p>
                 <div id="staff-controls" class="mt-6 pt-4 border-t border-gray-200 hidden">
@@ -162,28 +118,16 @@
         <div id="customer-view" class="hidden grid lg:grid-cols-3 gap-8">
             <div class="lg:col-span-2">
                 <h2 class="text-4xl text-primary-dark font-semibold border-b-2 border-accent-gold pb-3 mb-6">
-                    Our Menu
+                    Restaurant Menu
                 </h2>
                 
-                <!-- START: Filter Buttons Container -->
-                <div id="filters-container" class="mb-6 bg-white p-4 rounded-xl shadow-md space-y-4">
-                    <p class="text-lg font-bold text-primary-dark">Filter by Dietary Status:</p>
-                    <div id="customer-filters" class="flex flex-wrap gap-3">
-                        <button data-filter="all" class="filter-btn py-2 px-4 rounded-lg font-semibold filter-all bg-primary-dark text-white hover:bg-gray-700 transition duration-150">Show All</button>
-                        <button data-filter="veg" class="filter-btn py-2 px-4 rounded-lg font-semibold filter-veg text-green-700 hover:bg-green-200 transition duration-150">Vegetarian</button>
-                        <button data-filter="non-veg" class="filter-btn py-2 px-4 rounded-lg font-semibold filter-non-veg text-red-700 hover:bg-red-200 transition duration-150">Non-Vegetarian</button>
-                    </div>
-                    
-                    <p class="text-lg font-bold text-primary-dark pt-4 border-t border-gray-100">Filter by Category:</p>
-                    <div id="category-filters" class="flex flex-wrap gap-3">
-                        <button data-filter="all" class="category-btn py-2 px-4 rounded-lg font-semibold bg-primary-dark text-white transition duration-150">All Categories</button>
-                        <button data-filter="appetizers" class="category-btn py-2 px-4 rounded-lg font-semibold text-gray-700 hover:bg-gray-300 transition duration-150">Appetizers</button>
-                        <button data-filter="main-courses" class="category-btn py-2 px-4 rounded-lg font-semibold text-gray-700 hover:bg-gray-300 transition duration-150">Main Courses</button>
-                        <button data-filter="desserts" class="category-btn py-2 px-4 rounded-lg font-semibold text-gray-700 hover:bg-gray-300 transition duration-150">Desserts</button>
-                        <button data-filter="beverages" class="category-btn py-2 px-4 rounded-lg font-semibold text-gray-700 hover:bg-gray-300 transition duration-150">Beverages</button>
-                    </div>
+                <!-- START: Dietary Filter Buttons -->
+                <div id="customer-filters" class="mb-6 flex flex-wrap gap-3 p-3 bg-white rounded-xl shadow-md">
+                    <button data-filter="all" class="filter-btn py-2 px-4 rounded-lg font-semibold filter-all bg-primary-dark text-white hover:bg-gray-700 transition duration-150">Show All</button>
+                    <button data-filter="veg" class="filter-btn py-2 px-4 rounded-lg font-semibold filter-veg text-green-700 hover:bg-green-200 transition duration-150">Vegetarian</button>
+                    <button data-filter="non-veg" class="filter-btn py-2 px-4 rounded-lg font-semibold filter-non-veg text-red-700 hover:bg-red-200 transition duration-150">Non-Vegetarian</button>
                 </div>
-                <!-- END: Filter Buttons Container -->
+                <!-- END: Dietary Filter Buttons -->
 
                 <div id="customer-content" class="space-y-8">
                     <!-- Menu items will be rendered here -->
@@ -193,54 +137,38 @@
                 </div>
             </div>
             
-            <!-- Cart Summary (Sticky on the right for desktop, hidden overlay on mobile) -->
-            <div class="lg:col-span-1">
-                <div id="cart-summary" class="bg-primary-dark p-6 rounded-xl shadow-2xl text-white
-<<<<<<< HEAD
-                                                 lg:sticky lg:top-20 lg:h-fit lg:overflow-y-auto
-                                                 fixed inset-0 lg:block z-40 hidden 
-                                                 overflow-y-auto">
-=======
-                                            lg:sticky lg:top-20 lg:h-fit lg:overflow-y-auto
-                                            fixed inset-0 lg:block z-40 hidden 
-                                            overflow-y-auto">
->>>>>>> 332eaf224709a40d0e04dc9867f7486ca89e697b
-                    
-                    <button id="close-mobile-cart" class="lg:hidden absolute top-4 right-4 text-white hover:text-accent-gold p-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                    </button>
-
-                    <h3 class="text-3xl font-bold text-accent-gold mb-4 border-b border-gray-600 pb-2">Your Order</h3>
-                    
-                    <div class="mb-4">
-                        <label for="table-id" class="block text-sm font-medium text-gray-300 mb-1">Your Table/YourName</label>
-                        <input type="text" id="table-id" class="w-full p-3 rounded-lg text-primary-dark" placeholder="Table 5 or Your Name" required>
-                    </div>
-
-                    <!-- Mobile Number Input Field -->
-                    <div class="mb-4">
-                        <label for="mobile-number" class="block text-sm font-medium text-gray-300 mb-1">Mobile Number (Optional)</label>
-                        <input type="tel" id="mobile-number" class="w-full p-3 rounded-lg text-primary-dark" placeholder="e.g., 9876543210">
-                        <p class="text-xs text-gray-400 mt-1">'You will get notified when the food is ready'.</p>
-                    </div>
-                    <!-- END: ADDED Mobile Number Input Field -->
-
-                    <div id="cart-items-list" class="space-y-3 mb-4 text-base max-h-56 overflow-y-auto scroll-hidden">
-                        <p id="cart-message" class="text-gray-400">Your cart is empty. Start adding items!</p>
-                    </div>
-                    
-                    <div class="flex justify-between items-center pt-4 border-t border-accent-gold">
-                        <span class="text-2xl font-bold">Total Bill:</span>
-                        <span id="cart-total" class="text-3xl font-extrabold text-accent-gold">₹0.00</span>
-                    </div>
-                    
-                    <button id="place-order-btn" onclick="window.placeOrder()" disabled class="w-full mt-4 status-new text-white py-3 rounded-lg font-bold text-xl hover:bg-green-700 transition duration-150 shadow-lg opacity-50 cursor-not-allowed">
-                        Place Order
-                    </button>
-                    <button id="clear-cart-btn" onclick="window.clearCart()" class="w-full mt-2 bg-red-600 text-white py-3 rounded-lg font-bold text-xl hover:bg-red-700 transition duration-150 shadow-lg">
-                        Clear Cart
-                    </button>
+            <!-- Cart Summary (Sticky on the right for desktop) -->
+            <div id="cart-summary" class="lg:col-span-1 bg-primary-dark p-6 rounded-xl shadow-2xl text-white sticky top-20 h-fit max-h-[85vh] overflow-y-auto">
+                <h3 class="text-3xl font-bold text-accent-gold mb-4 border-b border-gray-600 pb-2">Your Order</h3>
+                
+                <div class="mb-4">
+                    <label for="table-id" class="block text-sm font-medium text-gray-300 mb-1">Your Table/User ID</label>
+                    <input type="text" id="table-id" class="w-full p-3 rounded-lg text-primary-dark" placeholder="Table 5 or Your Name" required>
                 </div>
+
+                <!-- Mobile Number Input Field -->
+                <div class="mb-4">
+                    <label for="mobile-number" class="block text-sm font-medium text-gray-300 mb-1">Mobile Number (Optional)</label>
+                    <input type="tel" id="mobile-number" class="w-full p-3 rounded-lg text-primary-dark" placeholder="e.g., 9876543210">
+                    <p class="text-xs text-gray-400 mt-1">You will get notified when the food is ready (in SMS).</p>
+                </div>
+                <!-- END: ADDED Mobile Number Input Field -->
+
+                <div id="cart-items-list" class="space-y-3 mb-4 text-base max-h-56 overflow-y-auto scroll-hidden">
+                    <p id="cart-message" class="text-gray-400">Your cart is empty. Start adding items!</p>
+                </div>
+                
+                <div class="flex justify-between items-center pt-4 border-t border-accent-gold">
+                    <span class="text-2xl font-bold">Total Bill:</span>
+                    <span id="cart-total" class="text-3xl font-extrabold text-accent-gold">₹0.00</span>
+                </div>
+                
+                <button id="place-order-btn" onclick="window.placeOrder()" disabled class="w-full mt-4 status-new text-white py-3 rounded-lg font-bold text-xl hover:bg-green-700 transition duration-150 shadow-lg opacity-50 cursor-not-allowed">
+                    Place Order
+                </button>
+                <button id="clear-cart-btn" onclick="window.clearCart()" class="w-full mt-2 bg-red-600 text-white py-3 rounded-lg font-bold text-xl hover:bg-red-700 transition duration-150 shadow-lg">
+                    Clear Cart
+                </button>
             </div>
         </div>
 
@@ -265,7 +193,7 @@
                     Menu Management Editor
                 </h2>
                 
-                <div class="bg-white p-6 rounded-xl shadow-lg mb-8 lg:sticky lg:top-20">
+                <div class="bg-white p-6 rounded-xl shadow-lg mb-8 sticky top-20">
                     <h3 id="admin-form-title" class="text-2xl font-bold text-primary-dark mb-4">Add New Item</h3>
                     <form id="admin-form" onsubmit="window.saveMenuItem(event)">
                         <input type="hidden" id="admin-item-id">
@@ -355,96 +283,48 @@
         </div>
     </main>
 
-    <!-- Floating Cart Button (visible on small screens only when customer view is active) -->
-    <button id="mobile-cart-btn" class="fixed bottom-6 right-6 bg-accent-gold text-primary-dark p-4 rounded-full shadow-2xl z-50 flex items-center space-x-2 transition transform hover:scale-105 lg:hidden hidden">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
-            <path d="M3 1a1 1 0 000 2h1.22l.305 1.25H16.48a1 1 0 00.958-.756l1.325-4.526A1 1 0 0017 2H5.21z" />
-            <path d="M6 13a3 3 0 100 6 3 3 0 000-6zm10 0a3 3 0 100 6 3 3 0 000-6z" />
-        </svg>
-        <span id="mobile-cart-count" class="font-bold text-lg">0</span>
-    </button>
-
-    <!-- Recaptcha Container (Required for Firebase Phone Auth) -->
-    <div id="recaptcha-container" class="hidden"></div>
-
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-analytics.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut, RecaptchaVerifier, signInWithPhoneNumber } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, serverTimestamp, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
-<<<<<<< HEAD
-        // --- HARDCODED FIREBASE CONFIGURATION ---
-        const REAL_FIREBASE_CONFIG = {
-            apiKey: "AIzaSyAvc_aw2C1lcH5-uCi0lC-m9eZthk5wn4k",
+        // --- GLOBAL VARIABLES & FIREBASE INITIALIZATION ---
+
+        // Attempt to parse Canvas config, fallback to a placeholder if undefined
+        let firebaseConfig;
+        try {
+            const localFirebaseConfigPlaceholder = {
+                apiKey: "AIzaSyAvc_aw2C1lcH5-uCi0lC-m9eZthk5wn4k",
             authDomain: "restaurant-df7c9.firebaseapp.com",
             projectId: "restaurant-df7c9",
             storageBucket: "restaurant-df7c9.firebasestorage.app",
             messagingSenderId: "574078336871",
             appId: "1:574078336871:web:abd866fe886879795e39c2",
-            measurementId: "G-QPJWXK721P"
-        };
-        // Use the hardcoded config for Firebase initialization
-        const firebaseConfig = REAL_FIREBASE_CONFIG;
-        
-        // --- GLOBAL VARIABLES & ENVIRONMENT CHECK ---
-
-        // Use global environment variables provided by the Canvas environment
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-        // MANDATORY: Use __app_id for file paths if available, otherwise fallback to the projectId in the config.
-        const appId = typeof __app_id !== 'undefined' ? __app_id : REAL_FIREBASE_CONFIG.projectId;
-=======
-        // --- GLOBAL VARIABLES & FIREBASE INITIALIZATION ---
-
-        // Use global environment variables provided by the Canvas environment
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-
-        let firebaseConfig;
-        try {
-            // Attempt to parse Canvas config
-            firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : 'null');
-            if (!firebaseConfig) throw new Error('Firebase Config Missing');
+            measurementId: "G-QPJWXK721P",
+            };
+            let rawConfig = typeof __firebase_config !== 'undefined' ? __firebase_config : JSON.stringify(localFirebaseConfigPlaceholder);
+            firebaseConfig = JSON.parse(rawConfig);
         } catch (e) {
-            console.error("Firebase config is missing or invalid. Using mock configuration.", e);
-            // Minimal mock for local development outside the environment
-            firebaseConfig = { apiKey: "MOCK-API-KEY", authDomain: "mock.firebaseapp.com", projectId: appId, storageBucket: "mock.appspot.com", messagingSenderId: "MOCK", appId: "1:MOCK:web:MOCK", measurementId: "MOCK" };
+            console.error("Failed to parse firebase config:", e);
+            firebaseConfig = null;
         }
 
->>>>>>> 332eaf224709a40d0e04dc9867f7486ca89e697b
+        // Use projectId as app ID fallback if __app_id is missing
+        const appId = typeof __app_id !== 'undefined' ? __app_id : firebaseConfig?.projectId || 'default-app-id';
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
         let app, db, auth;
         let currentUserId = null;
         let isAuthenticated = false; // Mock authentication status for Admin/Chef
-        let staffRole = null; // Stores 'admin' or 'chef'
         let menuItems = [];
         let cartItems = [];
         
-        // --- OTP/PHONE AUTH STATE VARIABLES ---
-        let confirmationResult = null;
-        let appVerifier = null;
-        
+        // ADDED: State variable for dietary filtering
         let currentDietaryFilter = 'all'; // 'all', 'veg', or 'non-veg'
-        let currentCategoryFilter = 'all'; // 'all', 'appetizers', 'main-courses', 'desserts', 'beverages'
-
+        
         // Firestore paths for public data
         const MENU_COLLECTION_PATH = `artifacts/${appId}/public/data/menuItems`;
         const ORDERS_COLLECTION_PATH = `artifacts/${appId}/public/data/orders`;
-        
-        // --- CONSTANT FOR INDIA PHONE CODE ---
-        const COUNTRY_CODE = '+91';
-
-        // Mock staff mapping (Full Phone Number -> Role)
-        const STAFF_ROLES = {
-            '+91123': 'admin', // Mock admin phone number (+91 prepended to 123)
-<<<<<<< HEAD
-            '+91456': 'chef'  // Mock chef phone number (+91 prepended to 456)
-=======
-            '+91456': 'chef'  // Mock chef phone number (+91 prepended to 456)
->>>>>>> 332eaf224709a40d0e04dc9867f7486ca89e697b
-        };
-        // Shared mock password for staff login (in production replace with secure auth)
-        const SHARED_PASSWORD = typeof __shared_password !== 'undefined' ? __shared_password : 'restaurant123';
 
         // UI Elements (simplified for brevity)
         const views = {
@@ -455,11 +335,6 @@
             'qr-view': document.getElementById('qr-view')
         };
         const loginForm = document.getElementById('login-form');
-        const loginPhoneInput = document.getElementById('login-phone');
-        const loginOtpInput = document.getElementById('login-otp');
-        const sendOtpBtn = document.getElementById('send-otp-btn');
-        const verifyOtpBtn = document.getElementById('verify-otp-btn');
-        const otpVerificationSection = document.getElementById('otp-verification-section');
         const customerContent = document.getElementById('customer-content');
         const customerMenuEmpty = document.getElementById('customer-menu-empty');
         const adminItemsList = document.getElementById('admin-items-list');
@@ -474,12 +349,6 @@
         const authStatusDiv = document.getElementById('auth-status');
         const loadingIndicator = document.getElementById('loading-indicator');
         
-        // New Mobile Cart Elements
-        const mobileCartBtn = document.getElementById('mobile-cart-btn');
-        const mobileCartCount = document.getElementById('mobile-cart-count');
-        const cartSummary = document.getElementById('cart-summary');
-        const closeMobileCartBtn = document.getElementById('close-mobile-cart');
-
         // Modal elements
         const modalBackdrop = document.getElementById('modal-backdrop');
         const modalTitle = document.getElementById('modal-title');
@@ -487,24 +356,21 @@
         const modalOkBtn = document.getElementById('modal-ok-btn');
         const modalCancelBtn = document.getElementById('modal-cancel-btn');
 
-
         // --- UTILITY FUNCTIONS ---
 
+        // Custom Modal Function (replaces alert/confirm)
         function showModal(title, message, isConfirm = false) {
             return new Promise((resolve) => {
-<<<<<<< HEAD
-                modalOkBtn.textContent = 'OK';  
-                modalCancelBtn.textContent = 'Cancel';  
-=======
-                modalOkBtn.textContent = 'OK'; 
-                modalCancelBtn.textContent = 'Cancel'; 
->>>>>>> 332eaf224709a40d0e04dc9867f7486ca89e697b
+                // IMPORTANT: Restore button texts to defaults if they were renamed by the payment prompt
+                modalOkBtn.textContent = 'OK'; 
+                modalCancelBtn.textContent = 'Cancel'; 
 
                 modalTitle.textContent = title;
                 modalMessage.textContent = message;
                 modalBackdrop.classList.remove('hidden');
                 modalBackdrop.classList.add('flex');
                 
+                // Reset listeners
                 modalOkBtn.onclick = null;
                 modalCancelBtn.onclick = null;
 
@@ -535,23 +401,18 @@
             });
         }
 
+        // Helper function to render the dietary status indicator
         const getDietaryIndicator = (status) => {
             let colorClass = 'bg-gray-400';
-            let label = 'Unknown';
-            if (status === 'veg') { colorClass = 'bg-green-500'; label = 'Vegetarian'; }
-            if (status === 'non-veg') { colorClass = 'bg-red-500'; label = 'Non-Vegetarian'; }
-            // Added simple box indicator
-            return `
-                <span class="inline-block w-3 h-3 rounded-sm ${colorClass} mr-2 flex-shrink-0" title="${label}">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-full h-full p-[1px] text-white" viewBox="0 0 100 100" fill="currentColor">
-                        <circle cx="50" cy="50" r="40"/>
-                    </svg>
-                </span>
-            `;
+            if (status === 'veg') colorClass = 'bg-green-500';
+            if (status === 'non-veg') colorClass = 'bg-red-500';
+            return `<span class="inline-block w-3 h-3 rounded-sm ${colorClass} mr-2 flex-shrink-0"></span>`;
         };
 
+        // NEW: Helper function to render the payment status indicator
         const getPaymentIndicator = (status) => {
             if (status === 'Completed') {
+                // Green Tick
                 return `
                     <div class="flex items-center space-x-1 text-sm font-bold text-green-600 bg-green-100 px-2 py-1 rounded-full">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
@@ -561,10 +422,11 @@
                     </div>
                 `;
             } else {
+                // Red Cross/Pending
                 return `
                     <div class="flex items-center space-x-1 text-sm font-bold text-red-600 bg-red-100 px-2 py-1 rounded-full">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                            <path d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
                         </svg>
                         <span>Pending</span>
                     </div>
@@ -574,82 +436,24 @@
 
         // --- AUTHENTICATION & VIEW MANAGEMENT ---
 
-        function updateStaffAccess(phoneNumber) {
-            staffRole = STAFF_ROLES[phoneNumber] || null;
-            isAuthenticated = !!staffRole;
-            
-            if (isAuthenticated) {
-                authStatusDiv.textContent = `Logged in as: ${staffRole.toUpperCase()}`;
-                
-                document.getElementById('staff-controls').classList.remove('hidden');
-                document.getElementById('view-admin-btn').classList.toggle('hidden', staffRole !== 'admin');
-                document.getElementById('view-chef-btn').classList.toggle('hidden', staffRole !== 'chef');
-
-                document.getElementById('nav-admin').dataset.view = 'admin-view';
-                document.getElementById('nav-chef').dataset.view = 'chef-view';
-
-                const targetViewBtn = document.querySelector('[data-target-view]');
-                const targetView = targetViewBtn?.dataset.targetView;
-                if (targetViewBtn) targetViewBtn.removeAttribute('data-target-view');
-
-                const nextView = targetView || (staffRole === 'admin' ? 'admin-view' : 'chef-view');
-                window.switchView(nextView);
-            } else {
-<<<<<<< HEAD
-                showModal("Access Denied", "Your authenticated phone number is not registered to a staff role.");
-=======
-                 showModal("Access Denied", "Your authenticated phone number is not registered to a staff role.");
->>>>>>> 332eaf224709a40d0e04dc9867f7486ca89e697b
-            }
-        }
-
-        // Set staff access programmatically (used for password-based login)
-        function setStaffAccess(role = 'staff') {
-            staffRole = role; // 'admin' | 'chef' | 'staff'
-            isAuthenticated = !!role;
-
-            if (isAuthenticated) {
-                authStatusDiv.textContent = `Logged in as: ${role.toUpperCase()}`;
-                document.getElementById('staff-controls').classList.remove('hidden');
-
-                // Show/hide quick-access buttons depending on role. 'staff' sees both.
-                document.getElementById('view-admin-btn').classList.toggle('hidden', role === 'chef');
-                document.getElementById('view-chef-btn').classList.toggle('hidden', role === 'admin');
-
-                document.getElementById('nav-admin').dataset.view = 'admin-view';
-                document.getElementById('nav-chef').dataset.view = 'chef-view';
-
-                // If there was a deferred view request, handle it
-                const targetViewBtn = document.querySelector('[data-target-view]');
-                const targetView = targetViewBtn?.dataset.targetView;
-                if (targetViewBtn) targetViewBtn.removeAttribute('data-target-view');
-
-                const nextView = targetView || 'admin-view';
-                window.switchView(nextView);
-            }
-        }
-
         async function setupFirebase() {
-<<<<<<< HEAD
+            if (!firebaseConfig) {
+                 loadingIndicator.classList.add('hidden');
+                 showModal("Configuration Error", "Firebase configuration is missing or invalid. Application running in limited mode.");
+                 window.switchView('customer-view');
+                 return;
+            }
+
             try {
                 // setLogLevel('debug'); // Uncomment for Firestore debugging
                 app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app);
-                
-                // Initialize Recaptcha Verifier
-                appVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-                    'size': 'invisible', // Invisible reCAPTCHA
-                    'callback': (response) => {
-                        // reCAPTCHA solved
-                    },
-                    'expired-callback': () => {
-                        showModal("Verification Expired", "The reCAPTCHA token expired. Please try again.");
-                    }
-                });
 
                 onAuthStateChanged(auth, async (user) => {
-                    if (!user) {
+                    if (user) {
+                        currentUserId = user.uid;
+                    } else if (!auth.currentUser) {
                         if (initialAuthToken) {
                             await signInWithCustomToken(auth, initialAuthToken);
                         } else {
@@ -657,79 +461,29 @@
                         }
                         return; // Wait for the next listener callback
                     }
-                    
-                    currentUserId = user.uid;
-                    if (user.phoneNumber && STAFF_ROLES[user.phoneNumber]) {
-                        updateStaffAccess(user.phoneNumber);
-                    } else {
+
+                    // Execution continues here only after a user is established
+                    if (auth.currentUser) {
+                        currentUserId = user.uid;
                         authStatusDiv.textContent = `User ID: ${currentUserId.substring(0, 8)}...`;
+                        // isAuthenticated status is only set by successful mock login for staff views
+                        initRealtimeListeners(); // Start listening for data once Firebase user is established
+                        generateQRCode(window.location.href.split('#')[0] + '#customer-view');
+                    } else {
+                        currentUserId = 'anonymous-' + crypto.randomUUID();
+                        authStatusDiv.textContent = 'Not Logged In';
+                        isAuthenticated = false;
+                        initRealtimeListeners(); 
                     }
                     
-                    initRealtimeListeners();  
-                    generateQRCode(window.location.href.split('#')[0] + '#customer-view');
                     loadingIndicator.classList.add('hidden');
-                    // Only switch to customer view if not already authenticated as staff
-                    if (!isAuthenticated) {
-                        window.switchView('customer-view');
-                    }
+                    // Default to customer view on load, since hash setting is restricted
+                    window.switchView('customer-view');
                 });
 
             } catch (error) {
                 console.error("Firebase setup failed:", error);
                 showModal("Setup Error", `Could not initialize Firebase. Check console for details: ${error.message}.`);
-=======
-            if (!firebaseConfig.apiKey.includes("MOCK")) {
-                try {
-                    // setLogLevel('debug'); // Uncomment for Firestore debugging
-                    app = initializeApp(firebaseConfig);
-                    db = getFirestore(app);
-                    auth = getAuth(app);
-                    
-                    // Initialize Recaptcha Verifier
-                    appVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-                        'size': 'invisible', // Invisible reCAPTCHA
-                        'callback': (response) => {
-                            // reCAPTCHA solved
-                        },
-                        'expired-callback': () => {
-                            showModal("Verification Expired", "The reCAPTCHA token expired. Please try again.");
-                        }
-                    });
-
-                    onAuthStateChanged(auth, async (user) => {
-                        if (!user) {
-                            if (initialAuthToken) {
-                                await signInWithCustomToken(auth, initialAuthToken);
-                            } else {
-                                await signInAnonymously(auth);
-                            }
-                            return; // Wait for the next listener callback
-                        }
-                        
-                        currentUserId = user.uid;
-                        if (user.phoneNumber && STAFF_ROLES[user.phoneNumber]) {
-                            updateStaffAccess(user.phoneNumber);
-                        } else {
-                            authStatusDiv.textContent = `User ID: ${currentUserId.substring(0, 8)}...`;
-                        }
-                        
-                        initRealtimeListeners(); 
-                        generateQRCode(window.location.href.split('#')[0] + '#customer-view');
-                        loadingIndicator.classList.add('hidden');
-                        window.switchView('customer-view');
-                    });
-
-                } catch (error) {
-                    console.error("Firebase setup failed:", error);
-                    showModal("Setup Error", `Could not initialize Firebase. Check console for details: ${error.message}.`);
-                    loadingIndicator.classList.add('hidden');
-                    window.switchView('customer-view');
-                }
-            } else {
-                // Mock non-authenticated mode if Firebase config is unavailable
-                currentUserId = 'anonymous-' + crypto.randomUUID();
-                authStatusDiv.textContent = 'Not Logged In (Mock Mode)';
->>>>>>> 332eaf224709a40d0e04dc9867f7486ca89e697b
                 loadingIndicator.classList.add('hidden');
                 window.switchView('customer-view');
             }
@@ -738,28 +492,24 @@
         window.switchView = (viewId) => {
             const isStaffView = ['admin-view', 'chef-view'].includes(viewId);
             
+            // 1. Reset navigation button styles for all tabs
             document.querySelectorAll('#nav-tabs button').forEach(btn => {
                 btn.classList.remove('bg-accent-gold', 'text-white');
                 btn.classList.add('text-gray-300');
             });
 
+            // Hide all views
             Object.values(views).forEach(v => v.classList.add('hidden'));
-            
-            // Hide mobile cart button and cart overlay when switching views
-            mobileCartBtn.classList.add('hidden');
-            cartSummary.classList.add('hidden');
-            document.body.classList.remove('overflow-hidden', 'lg:overflow-auto');
 
-
+            // Handle Protected Views
             if (isStaffView && !isAuthenticated) {
                 views['login-view'].classList.remove('hidden');
-<<<<<<< HEAD
                 document.getElementById('staff-controls').classList.add('hidden'); 
-=======
-                document.getElementById('staff-controls').classList.add('hidden'); 
->>>>>>> 332eaf224709a40d0e04dc9867f7486ca89e697b
                 
+                // Store intended view on the login button
                 const navBtnId = viewId === 'admin-view' ? 'nav-admin' : 'nav-chef';
+                
+                // 2. Highlight the button that was clicked to prompt login
                 const navBtn = document.getElementById(navBtnId);
                 navBtn.classList.add('bg-accent-gold', 'text-white');
                 navBtn.classList.remove('text-gray-300');
@@ -769,184 +519,84 @@
                 return;
             }
             
+            // Show the requested view
             const targetView = views[viewId];
             if (targetView) {
                 targetView.classList.remove('hidden');
                 
+                // 2. Highlight the active navigation button
                 const navBtn = document.getElementById(`nav-${viewId.split('-')[0]}`);
+                // Special case for login view where nav-admin or nav-chef is highlighted
                 if (viewId === 'login-view') {
+                    // Do nothing here, highlighting is handled above when redirected
                 } else if (navBtn) {
                     navBtn.classList.add('bg-accent-gold', 'text-white');
                     navBtn.classList.remove('text-gray-300');
                 }
             }
             
+            // Special handling for customer view initialization
             if (viewId === 'customer-view') {
-                window.applyMenuFilters(currentDietaryFilter, currentCategoryFilter);
-                window.updateCartDisplay(); // Make sure the mobile button is visible and updated
-                mobileCartBtn.classList.remove('hidden');
+                // Ensure filter is applied and buttons are styled correctly when navigating back
+                window.handleMenuFilter(currentDietaryFilter);
             }
         };
-        
-        // --- PHONE AUTH FLOW FUNCTIONS ---
 
-        function resetOtpControls(clearPhone = false) {
-            confirmationResult = null;
-            loginOtpInput.value = '';
-            loginOtpInput.disabled = true;
-            verifyOtpBtn.disabled = true;
-            otpVerificationSection.classList.add('hidden');
-            sendOtpBtn.classList.remove('hidden');
-            sendOtpBtn.textContent = 'Send OTP';
-            if(clearPhone) loginPhoneInput.value = '';
-            document.getElementById('login-error').classList.add('hidden');
-        }
-
-        window.handleSendOtp = async () => {
-            if (!auth) return showModal("Error", "Authentication service not initialized.");
-            
-            const phoneNumberSuffix = loginPhoneInput.value.trim();
-            const errorDiv = document.getElementById('login-error');
-            errorDiv.classList.add('hidden');
-            
-            const fullPhoneNumber = COUNTRY_CODE + phoneNumberSuffix;
-
-            if (phoneNumberSuffix !== '123' && phoneNumberSuffix !== '456') {
-                errorDiv.textContent = 'Please enter a mock staff phone number (e.g., 123 or 456) for testing.';
-                errorDiv.classList.remove('hidden');
-                return;
-            }
-            
-            if (!STAFF_ROLES[fullPhoneNumber]) {
-                 errorDiv.textContent = 'The entered number is not registered to a staff account.';
-                 errorDiv.classList.remove('hidden');
-                 return;
-            }
-
-            try {
-                sendOtpBtn.disabled = true;
-                sendOtpBtn.textContent = 'Sending...';
-
-                // We need to wait for the Recaptcha to resolve before calling signInWithPhoneNumber
-                const recaptchaToken = await appVerifier.verify();
-                
-                confirmationResult = await signInWithPhoneNumber(auth, fullPhoneNumber, appVerifier);
-                
-                sendOtpBtn.textContent = 'OTP Sent (Verify Below)';
-                otpVerificationSection.classList.remove('hidden');
-                loginOtpInput.disabled = false;
-                verifyOtpBtn.disabled = false;
-                sendOtpBtn.classList.add('hidden');
-                
-                showModal("OTP Sent", `An OTP has been sent to ${fullPhoneNumber}. Please enter it below to verify. Mock OTP is usually 123456 in dev mode.`);
-
-            } catch (error) {
-                console.error("Error sending OTP:", error);
-                errorDiv.textContent = `Failed to send OTP. Check console. Error: ${error.message.substring(0, 50)}...`;
-                errorDiv.classList.remove('hidden');
-                sendOtpBtn.disabled = false;
-                sendOtpBtn.textContent = 'Resend OTP';
-                if (appVerifier && appVerifier.clear) appVerifier.clear(); // Reset recaptcha on failure
-            }
-        };
-        
-        window.handleVerifyOtp = async (e) => {
+        window.handleLogin = (e) => {
             e.preventDefault();
-            const enteredOtp = loginOtpInput.value.trim();
+            const phone = document.getElementById('login-phone').value;
+            const password = document.getElementById('login-password').value;
             const errorDiv = document.getElementById('login-error');
+            const staffControls = document.getElementById('staff-controls');
+            const targetViewBtn = document.querySelector('[data-target-view]');
+            const targetView = targetViewBtn?.dataset.targetView;
+            
             errorDiv.classList.add('hidden');
 
-            if (!confirmationResult) {
-                errorDiv.textContent = 'Please request an OTP first.';
+            // --- Mock Authentication ---
+            let role = null;
+            if (phone === '123' && password === 'admin') {
+                role = 'admin';
+            } else if (phone === '456' && password === 'chef') {
+                role = 'chef';
+            } else {
+                errorDiv.textContent = 'Invalid credentials. Try 123/admin or 456/chef.';
                 errorDiv.classList.remove('hidden');
                 return;
             }
 
-            if (enteredOtp.length < 6) {
-                 errorDiv.textContent = 'OTP must be 6 digits.';
-                 errorDiv.classList.remove('hidden');
-                 return;
-            }
+            // Simulate successful login state changes
+            isAuthenticated = true;
+            authStatusDiv.textContent = `Logged in as: ${role.toUpperCase()}`;
+            
+            // Show controls and set view buttons for easy switching
+            staffControls.classList.remove('hidden');
+            
+            document.getElementById('nav-admin').dataset.view = 'admin-view';
+            document.getElementById('nav-chef').dataset.view = 'chef-view';
+            
+            // Clear the target view property after successful login
+            if (targetViewBtn) targetViewBtn.removeAttribute('data-target-view');
 
-            try {
-                verifyOtpBtn.disabled = true;
-                verifyOtpBtn.textContent = 'Verifying...';
-
-                const result = await confirmationResult.confirm(enteredOtp);
-                const user = result.user;
-
-                if (user.phoneNumber && STAFF_ROLES[user.phoneNumber]) {
-                    // Success is handled by onAuthStateChanged listener
-                    resetOtpControls(true); 
-                } else {
-                    await signOut(auth);
-                    showModal("Role Error", "Authenticated user does not have a registered staff role.");
-                    resetOtpControls(true);
-                }
-
-            } catch (error) {
-                console.error("Error verifying OTP:", error);
-                errorDiv.textContent = 'Invalid OTP. Please try again.';
-                errorDiv.classList.remove('hidden');
-                verifyOtpBtn.disabled = false;
-                verifyOtpBtn.textContent = 'Verify & Log In';
-                loginOtpInput.value = '';
-            }
+            // Redirect to the originally intended view or Admin/Chef by default
+            const nextView = targetView || (role === 'admin' ? 'admin-view' : 'chef-view');
+            window.switchView(nextView);
         };
-        
-        // --- Event Listeners ---
-        sendOtpBtn.addEventListener('click', window.handleSendOtp);
-        // New form submit wrapper: support shared password login or fallback to OTP verification
-        window.handleLoginSubmit = async (e) => {
-            e.preventDefault();
-            const phoneSuffix = loginPhoneInput.value.trim();
-            const fullPhoneNumber = COUNTRY_CODE + phoneSuffix;
-            const password = document.getElementById('login-password').value || '';
-
-            // If password provided, validate against SHARED_PASSWORD and allow access to both admin/chef
-            if (password.length > 0) {
-                if (password === SHARED_PASSWORD) {
-                    // Optionally ensure phone is one of the staff phones (123/456) or allow any
-                    if (phoneSuffix === '123' || phoneSuffix === '456' || STAFF_ROLES[fullPhoneNumber]) {
-                        setStaffAccess('staff');
-                        showModal('Logged In', 'Staff access granted. You can access Admin and Chef views.');
-                        return;
-                    } else {
-                        showModal('Access Denied', 'Phone number not recognized as staff.');
-                        return;
-                    }
-                } else {
-                    showModal('Invalid Password', 'The provided password is incorrect.');
-                    return;
-                }
-            }
-
-            // No password: proceed with OTP verification flow
-            return window.handleVerifyOtp(e);
-        };
-        loginForm.addEventListener('submit', window.handleLoginSubmit);
+        loginForm.addEventListener('submit', window.handleLogin);
         
         document.getElementById('logout-btn').onclick = async () => {
-            if (auth) await signOut(auth);
-            
-<<<<<<< HEAD
-            resetOtpControls(true); 
-=======
-            resetOtpControls(true); 
->>>>>>> 332eaf224709a40d0e04dc9867f7486ca89e697b
+            // NOTE: We don't sign out of Firebase here as the customer view needs the anonymous user to function.
+            // We only reset the staff authentication state.
             isAuthenticated = false;
-            staffRole = null;
+            document.getElementById('login-form').reset();
             document.getElementById('staff-controls').classList.add('hidden');
             document.getElementById('nav-admin').dataset.view = 'login-view';
             document.getElementById('nav-chef').dataset.view = 'login-view';
             showModal("Logged Out", "You have been successfully logged out from the staff console.");
-<<<<<<< HEAD
-            window.switchView('customer-view');  
-=======
-            window.switchView('customer-view'); 
->>>>>>> 332eaf224709a40d0e04dc9867f7486ca89e697b
+            window.switchView('customer-view'); // Redirect to public view
         };
         
+        // Add event listeners for the staff view buttons in the login pane
         document.getElementById('staff-controls').addEventListener('click', (e) => {
             if (e.target.dataset.view) {
                 window.switchView(e.target.dataset.view);
@@ -960,86 +610,58 @@
             }
         });
 
-        // Mobile Cart Toggle Logic
-        mobileCartBtn.addEventListener('click', () => {
-            cartSummary.classList.remove('hidden');
-            // Prevent background scrolling on mobile when cart overlay is open
-            document.body.classList.add('overflow-hidden', 'lg:overflow-auto');
-        });
-
-        closeMobileCartBtn.addEventListener('click', () => {
-            cartSummary.classList.add('hidden');
-            // Re-enable scrolling
-            document.body.classList.remove('overflow-hidden', 'lg:overflow-auto');
-        });
-
-
         // --- REALTIME DATA LISTENERS ---
 
         function initRealtimeListeners() {
             if (!db) return;
 
+            // 1. Menu Items Listener (for Customer and Admin)
             onSnapshot(collection(db, MENU_COLLECTION_PATH), (snapshot) => {
                 menuItems = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                // Re-render based on current filter state
                 window.renderCustomerMenu(menuItems);
                 window.renderAdminMenu(menuItems);
             }, (error) => {
                 console.error("Error listening to menu items:", error);
+                // showModal("Data Error", "Failed to fetch menu items in real-time.");
             });
 
+            // 2. Orders Listener (for Chef)
             const ordersQuery = query(collection(db, ORDERS_COLLECTION_PATH));
             onSnapshot(ordersQuery, (snapshot) => {
                 const orders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 window.renderChefOrders(orders);
             }, (error) => {
                 console.error("Error listening to orders:", error);
+                // showModal("Data Error", "Failed to fetch orders in real-time.");
             });
         }
         
-        window.applyMenuFilters = (dietaryFilter, categoryFilter) => {
-            currentDietaryFilter = dietaryFilter;
-            currentCategoryFilter = categoryFilter;
-<<<<<<< HEAD
-            window.renderCustomerMenu(menuItems); 
-=======
-            window.renderCustomerMenu(menuItems); 
->>>>>>> 332eaf224709a40d0e04dc9867f7486ca89e697b
+        // ADDED: Function to handle filter button clicks and update UI
+        window.handleMenuFilter = (filter) => {
+            currentDietaryFilter = filter;
+            window.renderCustomerMenu(menuItems); // Re-render menu with new filter
 
-            // Update Dietary filter buttons UI
+            // Update button styles
             document.querySelectorAll('#customer-filters .filter-btn').forEach(btn => {
                 btn.classList.remove('bg-primary-dark', 'text-white', 'filter-veg', 'filter-non-veg', 'filter-all');
                 
-                if (btn.dataset.filter === dietaryFilter) {
+                if (btn.dataset.filter === filter) {
                     btn.classList.add('bg-primary-dark', 'text-white');
                 } else {
                     if (btn.dataset.filter === 'veg') {
                         btn.classList.add('filter-veg', 'text-green-700', 'hover:bg-green-200');
                     } else if (btn.dataset.filter === 'non-veg') {
                         btn.classList.add('filter-non-veg', 'text-red-700', 'hover:bg-red-200');
-<<<<<<< HEAD
-                    } else { 
-=======
-                    } else { 
->>>>>>> 332eaf224709a40d0e04dc9867f7486ca89e697b
+                    } else { // 'all' filter button
                         btn.classList.add('filter-all', 'text-gray-700', 'hover:bg-gray-200');
                     }
-                }
-            });
-
-            // Update Category filter buttons UI
-            document.querySelectorAll('#category-filters .category-btn').forEach(btn => {
-                btn.classList.remove('bg-primary-dark', 'text-white', 'text-gray-700', 'hover:bg-gray-300');
-                
-                if (btn.dataset.filter === categoryFilter) {
-                    btn.classList.add('bg-primary-dark', 'text-white');
-                } else {
-                    btn.classList.add('text-gray-700', 'hover:bg-gray-300');
                 }
             });
         };
 
 
-        // --- MENU MANAGEMENT & ORDERING FUNCTIONS ---
+        // --- ADMIN MENU MANAGEMENT FUNCTIONS ---
 
         window.renderAdminMenu = (items) => {
             adminItemsList.innerHTML = '';
@@ -1076,13 +698,8 @@
         window.resetAdminForm = () => {
             document.getElementById('admin-form').reset();
             document.getElementById('admin-item-id').value = '';
-<<<<<<< HEAD
-            document.getElementById('admin-item-image-url').value = ''; 
-            document.getElementById('admin-item-dietary').value = 'veg'; 
-=======
-            document.getElementById('admin-item-image-url').value = ''; 
-            document.getElementById('admin-item-dietary').value = 'veg'; 
->>>>>>> 332eaf224709a40d0e04dc9867f7486ca89e697b
+            document.getElementById('admin-item-image-url').value = ''; // Clear image field
+            document.getElementById('admin-item-dietary').value = 'veg'; // Reset dietary status
             document.getElementById('admin-form-title').textContent = 'Add New Item';
             document.getElementById('admin-save-btn').textContent = 'Save Item';
         };
@@ -1095,13 +712,8 @@
                 document.getElementById('admin-item-description').value = item.description;
                 document.getElementById('admin-item-price').value = item.price;
                 document.getElementById('admin-item-category').value = item.category;
-<<<<<<< HEAD
-                document.getElementById('admin-item-image-url').value = item.imageUrl || ''; 
-                document.getElementById('admin-item-dietary').value = item.dietaryStatus || 'veg'; 
-=======
-                document.getElementById('admin-item-image-url').value = item.imageUrl || ''; 
-                document.getElementById('admin-item-dietary').value = item.dietaryStatus || 'veg'; 
->>>>>>> 332eaf224709a40d0e04dc9867f7486ca89e697b
+                document.getElementById('admin-item-image-url').value = item.imageUrl || ''; // Load image URL
+                document.getElementById('admin-item-dietary').value = item.dietaryStatus || 'veg'; // Load dietary status
 
                 document.getElementById('admin-form-title').textContent = `Editing: ${item.name}`;
                 document.getElementById('admin-save-btn').textContent = 'Update Item';
@@ -1139,21 +751,18 @@
                 description: document.getElementById('admin-item-description').value,
                 price: parseFloat(document.getElementById('admin-item-price').value),
                 category: document.getElementById('admin-item-category').value,
-<<<<<<< HEAD
-                imageUrl: document.getElementById('admin-item-image-url').value, 
-                dietaryStatus: document.getElementById('admin-item-dietary').value, 
-=======
-                imageUrl: document.getElementById('admin-item-image-url').value, 
-                dietaryStatus: document.getElementById('admin-item-dietary').value, 
->>>>>>> 332eaf224709a40d0e04dc9867f7486ca89e697b
+                imageUrl: document.getElementById('admin-item-image-url').value, // Save image URL
+                dietaryStatus: document.getElementById('admin-item-dietary').value, // Save dietary status
                 updatedAt: serverTimestamp()
             };
 
             try {
                 if (itemId) {
+                    // Update existing item
                     await updateDoc(doc(db, MENU_COLLECTION_PATH, itemId), itemData);
                     showModal("Success", `${itemData.name} was updated successfully.`);
                 } else {
+                    // Add new item
                     itemData.createdAt = serverTimestamp();
                     await addDoc(collection(db, MENU_COLLECTION_PATH), itemData);
                     showModal("Success", `${itemData.name} was added to the menu.`);
@@ -1165,19 +774,19 @@
             }
         };
 
+        // --- CUSTOMER MENU & ORDERING FUNCTIONS ---
+
         window.renderCustomerMenu = (items) => {
             customerContent.innerHTML = '';
             
+            // --- FILTERING LOGIC (Applied before grouping) ---
             let filteredItems = items;
-
             if (currentDietaryFilter !== 'all') {
-                filteredItems = filteredItems.filter(item => item.dietaryStatus === currentDietaryFilter);
+                filteredItems = items.filter(item => item.dietaryStatus === currentDietaryFilter);
             }
+            // --- END FILTERING LOGIC ---
 
-            if (currentCategoryFilter !== 'all') {
-                filteredItems = filteredItems.filter(item => item.category === currentCategoryFilter);
-            }
-
+            // Group filtered items by category
             const categories = filteredItems.reduce((acc, item) => {
                 (acc[item.category] = acc[item.category] || []).push(item);
                 return acc;
@@ -1197,22 +806,14 @@
                             return `
                                 <!-- START: Updated Card Structure for aesthetics and images -->
                                 <div class="menu-card bg-white rounded-xl shadow-lg overflow-hidden flex flex-col md:flex-row transition duration-300 transform">
-<<<<<<< HEAD
                                     <img src="${imageSrc}" 
-=======
-                                    <img src="${imageSrc}" 
->>>>>>> 332eaf224709a40d0e04dc9867f7486ca89e697b
-                                        onerror="this.onerror=null;this.src='${defaultImageUrl}'"
-                                        class="w-full md:w-48 h-36 md:h-auto object-cover" loading="lazy" alt="${item.name}">
+                                         onerror="this.onerror=null;this.src='${defaultImageUrl}'"
+                                         class="w-full md:w-48 h-36 md:h-auto object-cover" loading="lazy" alt="${item.name}">
                                     <div class="p-4 md:p-5 flex-grow flex flex-col justify-between">
                                         <!-- Content block -->
                                         <div class="flex justify-between items-start mb-2">
                                             <p class="text-xl font-bold text-primary-dark flex items-center">
-<<<<<<< HEAD
                                                 ${getDietaryIndicator(item.dietaryStatus)} 
-=======
-                                                ${getDietaryIndicator(item.dietaryStatus)} 
->>>>>>> 332eaf224709a40d0e04dc9867f7486ca89e697b
                                                 <span>${item.name}</span>
                                             </p>
                                             <span class="text-2xl font-extrabold text-accent-gold">₹${item.price.toFixed(2)}</span>
@@ -1266,6 +867,7 @@
         window.clearCart = () => {
             cartItems = [];
             window.updateCartDisplay();
+            // Do not show modal here, as it might interfere with the payment flow
         };
 
         window.updateCartDisplay = () => {
@@ -1301,12 +903,6 @@
                 });
             }
             cartTotalSpan.textContent = `₹${total.toFixed(2)}`;
-            
-            // Update mobile cart button count
-            const itemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
-            mobileCartCount.textContent = itemCount;
-            mobileCartBtn.classList.toggle('bg-red-500', itemCount === 0);
-            mobileCartBtn.classList.toggle('bg-accent-gold', itemCount > 0);
         };
 
         window.placeOrder = async () => {
@@ -1316,15 +912,14 @@
 
             if (!db) return showModal("Database Error", "Cannot place order. Firebase is not initialized.");
 
+            // Capture new mobile number field
             const mobileNumber = document.getElementById('mobile-number').value.trim();
+
             const total = parseFloat(cartTotalSpan.textContent.replace('₹', ''));
             
-<<<<<<< HEAD
+            // 1. First Confirmation Modal: Confirm Order Details
             const confirmationMessage = mobileNumber 
-=======
-            const confirmationMessage = mobileNumber 
->>>>>>> 332eaf224709a40d0e04dc9867f7486ca89e697b
-                ? `Total: ₹${total.toFixed(2)}. Place order for Table/User: ${tableId}? SMS notifications will be enabled on ${mobileNumber}.`
+                ? `Total: ₹${total.toFixed(2)}. Place order for Table/User: ${tableId}? SMS notifications will be enabled.`
                 : `Total: ₹${total.toFixed(2)}. Place order for Table/User: ${tableId}?`;
 
             const isConfirmed = await showModal("Confirm Order", confirmationMessage, true);
@@ -1332,11 +927,7 @@
 
             const orderData = {
                 tableId: tableId,
-<<<<<<< HEAD
                 mobileNumber: mobileNumber, 
-=======
-                mobileNumber: mobileNumber, 
->>>>>>> 332eaf224709a40d0e04dc9867f7486ca89e697b
                 items: cartItems.map(item => ({
                     id: item.id,
                     name: item.name,
@@ -1345,90 +936,67 @@
                     total: item.price * item.quantity
                 })),
                 total: total,
-<<<<<<< HEAD
-                status: 'New', 
-                paymentStatus: 'Pending', 
-=======
-                status: 'New', 
-                paymentStatus: 'Pending', 
->>>>>>> 332eaf224709a40d0e04dc9867f7486ca89e697b
+                status: 'New', // New, Preparing, Ready
+                paymentStatus: 'Pending', // <-- Set initial status to Pending
                 createdAt: serverTimestamp()
             };
             
             let orderId = null;
 
             try {
+                // 2. Place the Order in Firestore
                 const orderRef = await addDoc(collection(db, ORDERS_COLLECTION_PATH), orderData);
                 orderId = orderRef.id;
 
-<<<<<<< HEAD
+                // Clear the cart and inputs immediately as the order is saved
                 window.clearCart(); 
                 tableIdInput.value = '';
                 document.getElementById('mobile-number').value = ''; 
-=======
-                window.clearCart(); 
-                tableIdInput.value = '';
-                document.getElementById('mobile-number').value = ''; 
->>>>>>> 332eaf224709a40d0e04dc9867f7486ca89e697b
 
-                // Close mobile cart overlay if it was open
-                cartSummary.classList.add('hidden');
-                document.body.classList.remove('overflow-hidden', 'lg:overflow-auto');
-
-
+                // 3. Second Confirmation Modal: Payment Prompt (Manually configure modal buttons)
                 const paymentTitle = "Order Confirmed! Pay Now?";
                 const paymentMessage = `Your order for Table/User ${tableId} (Total: ₹${total.toFixed(2)}) has been sent to the kitchen. Please proceed to payment now or pay later.`;
 
+                // A. Set specific content and buttons for this prompt
                 modalTitle.textContent = paymentTitle;
                 modalMessage.textContent = paymentMessage;
-<<<<<<< HEAD
                 modalOkBtn.textContent = 'Make Payment'; 
                 modalCancelBtn.textContent = 'Pay Later'; 
-=======
-                modalOkBtn.textContent = 'Make Payment'; 
-                modalCancelBtn.textContent = 'Pay Later'; 
->>>>>>> 332eaf224709a40d0e04dc9867f7486ca89e697b
                 modalCancelBtn.classList.remove('hidden');
                 modalBackdrop.classList.remove('hidden');
                 modalBackdrop.classList.add('flex');
                 
+                // B. Set up Payment Prompt Listeners using a new Promise
                 const paymentPromise = new Promise((resolve) => {
                     modalOkBtn.onclick = () => {
                         modalBackdrop.classList.add('hidden');
                         modalBackdrop.classList.remove('flex');
-<<<<<<< HEAD
-                        resolve(true); 
-=======
-                        resolve(true); 
->>>>>>> 332eaf224709a40d0e04dc9867f7486ca89e697b
+                        resolve(true); // User clicked Make Payment
                     };
                     modalCancelBtn.onclick = () => {
                         modalBackdrop.classList.add('hidden');
                         modalBackdrop.classList.remove('flex');
-<<<<<<< HEAD
-                        resolve(false); 
-=======
-                        resolve(false); 
->>>>>>> 332eaf224709a40d0e04dc9867f7486ca89e697b
+                        resolve(false); // User clicked Pay Later
                     };
                 });
 
+                // C. Wait for user's payment choice
                 const shouldPay = await paymentPromise;
 
+                // D. Process Payment Choice
                 if (shouldPay && orderId) {
+                    // Update Firestore with completed payment
                     await updateDoc(doc(db, ORDERS_COLLECTION_PATH, orderId), {
                         paymentStatus: 'Completed',
                         paymentDate: serverTimestamp()
                     });
 
-                    await showModal("Payment Redirection", "Simulating secure payment...", false);
+                    // Simulate Redirection and Success
+                    await showModal("Payment Redirection", "Redirecting to a secure payment service...", false);
                     showModal("Payment Successful!", `Thank you for your payment of ₹${total.toFixed(2)}. Your order is now being prepared.`);
                 } else {
-<<<<<<< HEAD
+                    // Pay Later confirmation (no update needed, it remains 'Pending')
                     const finalMessage = mobileNumber 
-=======
-                    const finalMessage = mobileNumber 
->>>>>>> 332eaf224709a40d0e04dc9867f7486ca89e697b
                         ? `Your order is placed. Total: ₹${total.toFixed(2)}. You can pay later. We will notify ${mobileNumber} when your food is ready.`
                         : `Your order is placed. Total: ₹${total.toFixed(2)}. You can pay later.`;
                     showModal("Payment Deferred", finalMessage);
@@ -1440,9 +1008,12 @@
             }
         };
 
+        // --- CHEF KDS FUNCTIONS ---
+
         window.renderChefOrders = (orders) => {
             chefContent.innerHTML = '';
             
+            // Sort: New (1), then Preparing (2), then Ready (3), then by oldest (createdAt)
             const sortedOrders = orders.sort((a, b) => {
                 const statusOrder = { 'New': 1, 'Preparing': 2, 'Ready': 3 };
                 
@@ -1450,7 +1021,7 @@
                     return statusOrder[a.status] - statusOrder[b.status];
                 }
                 
-                // Sort by creation time (oldest first)
+                // Sort by time (oldest first for the same status)
                 const timeA = a.createdAt?.seconds || 0;
                 const timeB = b.createdAt?.seconds || 0;
                 return timeA - timeB;
@@ -1470,24 +1041,15 @@
                         break;
                     case 'Preparing':
                         statusClass = 'status-progress';
-<<<<<<< HEAD
-                        nextStatus = 'Ready'; 
-                        nextBtnText = 'Mark as Ready'; 
-=======
-                        nextStatus = 'Ready'; 
-                        nextBtnText = 'Mark as Ready'; 
->>>>>>> 332eaf224709a40d0e04dc9867f7486ca89e697b
+                        nextStatus = 'Ready'; // Next state is 'Ready'
+                        nextBtnText = 'Mark as Ready'; // The requested button text
                         btnColor = 'bg-status-progress hover:bg-blue-700';
                         break;
                     case 'Ready':
                         statusClass = 'status-ready';
-<<<<<<< HEAD
-                        nextStatus = 'Done'; 
-=======
-                        nextStatus = 'Done'; 
->>>>>>> 332eaf224709a40d0e04dc9867f7486ca89e697b
+                        nextStatus = 'Done'; // Special state to trigger deletion
                         nextBtnText = 'Clear Order (Served)';
-                        btnColor = 'bg-red-600 hover:bg-red-700';
+                        btnColor = 'bg-status-ready hover:bg-orange-600';
                         break;
                     default:
                         statusClass = 'bg-gray-500 border-gray-500';
@@ -1532,17 +1094,9 @@
                     
                     <div class="mt-6 pt-4 border-t border-gray-200">
                         <p class="text-xl font-bold text-gray-800 mb-2">Total: ₹${order.total.toFixed(2)}</p>
-<<<<<<< HEAD
                         <button 
                             onclick="window.updateOrderStatus('${order.id}', '${nextStatus}')" 
-                            class="w-full text-white
-                            py-3 rounded-lg font-bold text-lg transition duration-150 shadow-md ${btnColor}">
-=======
-                        <button 
-                            onclick="window.updateOrderStatus('${order.id}', '${nextStatus}')" 
-                            class="w-full text-white
-                          py-3 rounded-lg font-bold text-lg transition duration-150 shadow-md ${btnColor}">
->>>>>>> 332eaf224709a40d0e04dc9867f7486ca89e697b
+                            class="w-full text-white py-3 rounded-lg font-bold text-lg transition duration-150 shadow-md ${nextStatus === 'Done' ? 'bg-red-600 hover:bg-red-700' : btnColor}">
                             ${nextBtnText}
                         </button>
                     </div>
@@ -1556,7 +1110,7 @@
 
             try {
                 if (newStatus === 'Done') {
-                    // Only delete the order if it's marked as Done (Served)
+                    // Permanently delete the order (mark as served/complete)
                     await deleteDoc(doc(db, ORDERS_COLLECTION_PATH, orderId));
                 } else {
                     await updateDoc(doc(db, ORDERS_COLLECTION_PATH, orderId), {
@@ -1566,6 +1120,7 @@
                 }
             } catch (error) {
                 console.error("Error updating order status: ", error);
+                // Show a detailed error, confirming the attempted status transition
                 showModal("Error Updating Status", `Failed to transition order to ${newStatus}. Please check console for network/permission issues.`);
             }
         };
@@ -1577,22 +1132,15 @@
             const qrLink = document.getElementById('qr-link');
             qrLink.href = url;
             
-<<<<<<< HEAD
+            // Clear previous QR code if exists
             container.innerHTML = ''; 
-=======
-            container.innerHTML = ''; 
->>>>>>> 332eaf224709a40d0e04dc9867f7486ca89e697b
 
             if (typeof QRCode !== 'undefined') {
                  new QRCode(container, {
                     text: url,
                     width: 200,
                     height: 200,
-<<<<<<< HEAD
-                    colorDark : "#1f2937", 
-=======
-                    colorDark : "#1f2937", 
->>>>>>> 332eaf224709a40d0e04dc9867f7486ca89e697b
+                    colorDark : "#1f2937", // primary-dark
                     colorLight : "#ffffff",
                     correctLevel : QRCode.CorrectLevel.H
                 });
@@ -1606,23 +1154,15 @@
         window.onload = () => {
             loadingIndicator.classList.remove('hidden');
             setupFirebase();
+            window.updateCartDisplay(); // Initialize cart display
             
-            const dietaryFilterContainer = document.getElementById('customer-filters');
-            if (dietaryFilterContainer) {
-                dietaryFilterContainer.addEventListener('click', (e) => {
+            // Setup filter button listener
+            const filterContainer = document.getElementById('customer-filters');
+            if (filterContainer) {
+                filterContainer.addEventListener('click', (e) => {
                     const button = e.target.closest('.filter-btn');
                     if (button && button.dataset.filter) {
-                        window.applyMenuFilters(button.dataset.filter, currentCategoryFilter);
-                    }
-                });
-            }
-
-            const categoryFilterContainer = document.getElementById('category-filters');
-            if (categoryFilterContainer) {
-                categoryFilterContainer.addEventListener('click', (e) => {
-                    const button = e.target.closest('.category-btn');
-                    if (button && button.dataset.filter) {
-                        window.applyMenuFilters(currentDietaryFilter, button.dataset.filter);
+                        window.handleMenuFilter(button.dataset.filter);
                     }
                 });
             }
@@ -1630,4 +1170,3 @@
     </script>
 </body>
 </html>
-
