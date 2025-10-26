@@ -287,19 +287,28 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, serverTimestamp, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        
+        import { getAnalytics } from "firebase/analytics";
+
         // --- GLOBAL VARIABLES & FIREBASE INITIALIZATION ---
 
         // Attempt to parse Canvas config, fallback to a placeholder if undefined
         let firebaseConfig;
         try {
             const localFirebaseConfigPlaceholder = {
-                apiKey: "AIzaSyARDiRKdMPruNamb50HJUb_B8bPWrYmK24",
-                authDomain: "resturant-ef4ad.firebaseapp.com",
-                projectId: "resturant-ef4ad",
-                storageBucket: "resturant-ef4ad.firebasestorage.app",
-                messagingSenderId: "458014795991",
-                appId: "1:458014795991:web:d159552312427fe9e4e892",
+               apiKey: "AIzaSyDcMlALylgXCnCjKWHORWQPJO_BI4VpRuE",
+
+  authDomain: "resturant-864fb.firebaseapp.com",
+
+  projectId: "resturant-864fb",
+
+  storageBucket: "resturant-864fb.firebasestorage.app",
+
+  messagingSenderId: "232700056713",
+
+  appId: "1:232700056713:web:30976c2c02fe38bd61e258",
+
+  measurementId: "G-DGH3N2FSB1",
+
             };
             let rawConfig = typeof __firebase_config !== 'undefined' ? __firebase_config : JSON.stringify(localFirebaseConfigPlaceholder);
             firebaseConfig = JSON.parse(rawConfig);
@@ -311,7 +320,9 @@
         // Use projectId as app ID fallback if __app_id is missing
         const appId = typeof __app_id !== 'undefined' ? __app_id : firebaseConfig?.projectId || 'default-app-id';
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        const app = initializeApp(firebaseConfig);
 
+const analytics = getAnalytics(app);
         let app, db, auth;
         let currentUserId = null;
         let isAuthenticated = false; // Mock authentication status for Admin/Chef
